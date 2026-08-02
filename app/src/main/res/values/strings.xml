@@ -1,0 +1,50 @@
+<resources>
+    <string name="app_name">Маршрутки</string>
+
+    <!-- Home Screen -->
+    <string name="next_departure">Найближчий рейс</string>
+    <string name="next_departures">Далі сьогодні</string>
+    <string name="full_schedule">Весь розклад</string>
+    <string name="boarding_stop">Зупинка: %1$s</string>
+    <string name="travel_time">У дорозі ~%1$d хв</string>
+    <string name="swap_direction">Змінити напрямок</string>
+    <string name="no_departures_title">Рейсів більше немає</string>
+    <string name="no_departures_subtitle">На найближчі дні розкладу для цього напрямку не знайшлось.</string>
+    <string name="load_failed_title">Не вдалося прочитати розклад</string>
+    <string name="load_failed_subtitle">Перевір файл assets/schedule.json — там помилка у форматі.</string>
+
+    <!-- Countdown -->
+    <string name="departing_now">Відправляється</string>
+    <string name="in_hours_minutes">через %1$d год %2$d хв</string>
+    <plurals name="in_minutes">
+        <item quantity="one">через %1$d хвилину</item>
+        <item quantity="few">через %1$d хвилини</item>
+        <item quantity="many">через %1$d хвилин</item>
+        <item quantity="other">через %1$d хвилини</item>
+    </plurals>
+    <plurals name="in_hours">
+        <item quantity="one">через %1$d годину</item>
+        <item quantity="few">через %1$d години</item>
+        <item quantity="many">через %1$d годин</item>
+        <item quantity="other">через %1$d години</item>
+    </plurals>
+
+    <!-- Day labels -->
+    <string name="today">Сьогодні</string>
+    <string name="tomorrow">Завтра</string>
+    <string name="day_weekday">Будні</string>
+    <string name="day_saturday">Субота</string>
+    <string name="day_sunday">Неділя</string>
+
+    <!-- Full Schedule Screen -->
+    <string name="schedule_empty">Розкладу на цей день немає</string>
+    <plurals name="trips_count">
+        <item quantity="one">%1$d рейс</item>
+        <item quantity="few">%1$d рейси</item>
+        <item quantity="many">%1$d рейсів</item>
+        <item quantity="other">%1$d рейсу</item>
+    </plurals>
+
+    <!-- Actions -->
+    <string name="back">Назад</string>
+</resources>

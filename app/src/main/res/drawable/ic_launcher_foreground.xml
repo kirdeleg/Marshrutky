@@ -1,0 +1,22 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Кузов -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M36,26h36a8,8 0 0,1 8,8v38a8,8 0 0,1 -8,8h-36a8,8 0 0,1 -8,-8v-38a8,8 0 0,1 8,-8z" />
+    <!-- Лобове скло -->
+    <path
+        android:fillColor="@color/ic_launcher_background"
+        android:pathData="M34,36h40v18h-40z" />
+    <!-- Фари -->
+    <path
+        android:fillColor="@color/ic_launcher_background"
+        android:pathData="M34,62h10v6h-10zM64,62h10v6h-10z" />
+    <!-- Колеса -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M40,82m-7,0a7,7 0 1,0 14,0a7,7 0 1,0 -14,0zM68,82m-7,0a7,7 0 1,0 14,0a7,7 0 1,0 -14,0z" />
+</vector>
