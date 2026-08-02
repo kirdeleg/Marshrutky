@@ -77,7 +77,7 @@ class ScheduleRepository(
 
     private fun List<Pair<String, String>>.toRoutes(): List<Route> =
         mapNotNull { (fileName, content) -> parseRoute(fileName, content) }
-            .sortedWith(compareBy({ it.number.toIntOrNull() ?: Int.MAX_VALUE }, { it.number }))
+            .sortedWith(compareBy({ it.number?.toIntOrNull() ?: Int.MAX_VALUE }, { it.number ?: it.name }))
 
     private fun parseRoute(fileName: String, content: String): Route? = try {
         val parsed = json.decodeFromString<RouteFile>(content)

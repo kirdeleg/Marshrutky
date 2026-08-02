@@ -1,0 +1,29 @@
+{
+  "name": "Яковлівка — Харків",
+  "directions": [
+    {
+      "label": "На Харків",
+      "boardingStop": "Яковлівка",
+      "schedule": {
+        "weekday": [
+          "05:30",
+          "07:40"
+        ],
+        "saturday": [],
+        "sunday": []
+      }
+    },
+    {
+      "label": "З Харкова",
+      "boardingStop": "Харків (Холодна Гора)",
+      "schedule": {
+        "weekday": [
+          "06:35",
+          "09:10"
+        ],
+        "saturday": [],
+        "sunday": []
+      }
+    }
+  ]
+}

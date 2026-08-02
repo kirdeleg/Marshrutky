@@ -106,7 +106,7 @@ private fun RouteCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            RouteNumberBadge(route.number)
+            route.number?.let { RouteNumberBadge(it) }
 
             Text(
                 text = route.name,
