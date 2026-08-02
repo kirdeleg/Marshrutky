@@ -153,20 +153,11 @@ private fun DirectionSection(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Column {
-            Text(
-                text = direction.label,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-            direction.boardingStop?.let { stop ->
-                Text(
-                    text = stop,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
+        Text(
+            text = direction.stop,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
 
         if (dayType == null) {
             TodayChips(direction = direction, now = now)

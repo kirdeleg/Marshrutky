@@ -32,7 +32,11 @@ data class Direction(
     val label: String,
     val boardingStop: String? = null,
     val schedule: WeekSchedule = WeekSchedule()
-)
+) {
+    /** Заголовок напрямку — звідки їдемо. Підпис на кшталт «На Харків» лишається запасним варіантом. */
+    val stop: String
+        get() = boardingStop ?: label
+}
 
 @Serializable
 data class WeekSchedule(

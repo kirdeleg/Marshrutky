@@ -43,22 +43,15 @@ fun DirectionColumns(
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Text(
-                    text = direction.label,
-                    style = MaterialTheme.typography.labelLarge,
+                    text = direction.stop,
+                    style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.primary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    // Два рядки завжди: так час у сусідніх стовпчиках лишається на одній лінії.
+                    minLines = 2,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(bottom = 8.dp)
                 )
-                direction.boardingStop?.let { stop ->
-                    Text(
-                        text = stop,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(bottom = 6.dp)
-                    )
-                }
 
                 content(direction)
             }
