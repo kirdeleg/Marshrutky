@@ -18,7 +18,7 @@
 
     <!-- Routes -->
     <string name="routes_empty_title">Маршрутів немає</string>
-    <string name="routes_empty_subtitle">Додай файл розкладу в assets/routes — маршрут з\'явиться тут сам.</string>
+    <string name="routes_empty_subtitle">Поклади файл розкладу в теку routes у репозиторії — маршрут з\'явиться тут після оновлення.</string>
     <string name="favorite_add">Додати в обране</string>
     <string name="favorite_remove">Прибрати з обраного</string>
 
@@ -31,13 +31,19 @@
     <string name="direction_not_running_today">Сьогодні не курсує</string>
     <string name="direction_not_running">Не курсує</string>
     <string name="route_missing_title">Маршрут не знайдено</string>
-    <string name="route_missing_subtitle">Схоже, його файл прибрали з assets/routes.</string>
+    <string name="route_missing_subtitle">Схоже, його файл прибрали з репозиторію.</string>
 
     <!-- Settings -->
     <string name="settings_theme">Тема</string>
     <string name="theme_system">Як у системі</string>
     <string name="theme_light">Світла</string>
     <string name="theme_dark">Темна</string>
+    <string name="settings_data_title">Розклади</string>
+    <string name="settings_data_never">Ще не завантажувалися з мережі</string>
+    <string name="settings_data_synced">Оновлено %1$s</string>
+    <string name="settings_data_syncing">Перевіряю оновлення…</string>
+    <string name="settings_data_failed">Не вдалося оновити, показую збережене</string>
+    <string name="settings_refresh">Оновити зараз</string>
 
     <!-- Countdown -->
     <string name="departing_now">Відправляється</string>

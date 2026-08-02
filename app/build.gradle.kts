@@ -1,3 +1,5 @@
+import javax.inject.Inject
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -8,9 +10,34 @@ plugins {
  * Розклади живуть у `routes/` в корені репозиторію — звідти їх тягне застосунок по мережі.
  * Той самий набір кладемо в assets, щоб на першому запуску без інтернету було що показати.
  */
-val bundledRoutes = tasks.register<Sync>("syncBundledRoutes") {
-    from(rootProject.layout.projectDirectory.dir("routes"))
-    into(layout.buildDirectory.dir("generated/assets/routes"))
+abstract class BundleRoutes : DefaultTask() {
+
+    @get:InputDirectory
+    abstract val routes: DirectoryProperty
+
+    @get:OutputDirectory
+    abstract val outputDirectory: DirectoryProperty
+
+    @get:Inject
+    abstract val files: FileSystemOperations
+
+    @TaskAction
+    fun bundle() {
+        files.sync {
+            from(routes)
+            into(outputDirectory.dir("routes"))
+        }
+    }
+}
+
+val bundledRoutes = tasks.register<BundleRoutes>("bundleRoutes") {
+    routes.set(rootProject.layout.projectDirectory.dir("routes"))
+}
+
+androidComponents {
+    onVariants { variant ->
+        variant.sources.assets?.addGeneratedSourceDirectory(bundledRoutes, BundleRoutes::outputDirectory)
+    }
 }
 
 android {
@@ -42,10 +69,6 @@ android {
     }
     buildFeatures {
         compose = true
-    }
-
-    sourceSets.getByName("main") {
-        assets.srcDir(bundledRoutes.map { it.destinationDir.parentFile })
     }
 }
 

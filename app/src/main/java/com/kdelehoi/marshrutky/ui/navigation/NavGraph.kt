@@ -47,7 +47,8 @@ fun MarshrutkyNavGraph(
                     themeMode = themeMode,
                     onOpenRoute = { routeId -> backStack.add(Screen.RouteDetail(routeId)) },
                     onToggleFavorite = scheduleViewModel::toggleFavorite,
-                    onSelectThemeMode = settingsViewModel::selectThemeMode
+                    onSelectThemeMode = settingsViewModel::selectThemeMode,
+                    onRefresh = scheduleViewModel::refresh
                 )
             }
 
@@ -69,7 +70,8 @@ private fun MainTabs(
     themeMode: ThemeMode,
     onOpenRoute: (String) -> Unit,
     onToggleFavorite: (String) -> Unit,
-    onSelectThemeMode: (ThemeMode) -> Unit
+    onSelectThemeMode: (ThemeMode) -> Unit,
+    onRefresh: () -> Unit
 ) {
     val pagerState = rememberPagerState(pageCount = { TopLevelDestination.entries.size })
     val scope = rememberCoroutineScope()
@@ -108,7 +110,10 @@ private fun MainTabs(
 
                 TopLevelDestination.SETTINGS -> SettingsScreen(
                     themeMode = themeMode,
-                    onSelectThemeMode = onSelectThemeMode
+                    syncStatus = state.syncStatus,
+                    lastSyncedAt = state.lastSyncedAt,
+                    onSelectThemeMode = onSelectThemeMode,
+                    onRefresh = onRefresh
                 )
             }
         }
