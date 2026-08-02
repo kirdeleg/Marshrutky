@@ -1,17 +1,43 @@
 <resources>
     <string name="app_name">Маршрутки</string>
 
-    <!-- Home Screen -->
-    <string name="next_departure">Найближчий рейс</string>
-    <string name="next_departures">Далі сьогодні</string>
-    <string name="full_schedule">Весь розклад</string>
-    <string name="boarding_stop">Зупинка: %1$s</string>
-    <string name="travel_time">У дорозі ~%1$d хв</string>
-    <string name="swap_direction">Змінити напрямок</string>
-    <string name="no_departures_title">Рейсів більше немає</string>
-    <string name="no_departures_subtitle">На найближчі дні розкладу для цього напрямку не знайшлось.</string>
-    <string name="load_failed_title">Не вдалося прочитати розклад</string>
-    <string name="load_failed_subtitle">Перевір файл assets/schedule.json — там помилка у форматі.</string>
+    <!-- Bottom navigation -->
+    <string name="tab_favorites">Обране</string>
+    <string name="tab_routes">Маршрути</string>
+    <string name="tab_settings">Налаштування</string>
+
+    <!-- Search -->
+    <string name="search_placeholder">Номер або назва маршруту</string>
+    <string name="search_clear">Очистити</string>
+    <string name="nothing_found_title">Нічого не знайдено</string>
+    <string name="nothing_found_subtitle">Спробуй інший номер або частину назви.</string>
+
+    <!-- Favorites -->
+    <string name="favorites_empty_title">Обране порожнє</string>
+    <string name="favorites_empty_subtitle">Відкрий вкладку «Маршрути» і познач зіркою ті, що їздиш найчастіше.</string>
+
+    <!-- Routes -->
+    <string name="routes_empty_title">Маршрутів немає</string>
+    <string name="routes_empty_subtitle">Додай файл розкладу в assets/routes — маршрут з\'явиться тут сам.</string>
+    <string name="favorite_add">Додати в обране</string>
+    <string name="favorite_remove">Прибрати з обраного</string>
+
+    <!-- Route detail -->
+    <string name="tab_today">Сьогодні</string>
+    <string name="day_weekday">Будні</string>
+    <string name="day_saturday">Субота</string>
+    <string name="day_sunday">Неділя</string>
+    <string name="direction_no_more_today">Сьогодні рейсів більше немає</string>
+    <string name="direction_not_running_today">Сьогодні не курсує</string>
+    <string name="direction_not_running">Не курсує</string>
+    <string name="route_missing_title">Маршрут не знайдено</string>
+    <string name="route_missing_subtitle">Схоже, його файл прибрали з assets/routes.</string>
+
+    <!-- Settings -->
+    <string name="settings_theme">Тема</string>
+    <string name="theme_system">Як у системі</string>
+    <string name="theme_light">Світла</string>
+    <string name="theme_dark">Темна</string>
 
     <!-- Countdown -->
     <string name="departing_now">Відправляється</string>
@@ -27,22 +53,6 @@
         <item quantity="few">через %1$d години</item>
         <item quantity="many">через %1$d годин</item>
         <item quantity="other">через %1$d години</item>
-    </plurals>
-
-    <!-- Day labels -->
-    <string name="today">Сьогодні</string>
-    <string name="tomorrow">Завтра</string>
-    <string name="day_weekday">Будні</string>
-    <string name="day_saturday">Субота</string>
-    <string name="day_sunday">Неділя</string>
-
-    <!-- Full Schedule Screen -->
-    <string name="schedule_empty">Розкладу на цей день немає</string>
-    <plurals name="trips_count">
-        <item quantity="one">%1$d рейс</item>
-        <item quantity="few">%1$d рейси</item>
-        <item quantity="many">%1$d рейсів</item>
-        <item quantity="other">%1$d рейсу</item>
     </plurals>
 
     <!-- Actions -->

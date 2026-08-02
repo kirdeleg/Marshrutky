@@ -4,6 +4,15 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+/**
+ * Розклади живуть у `routes/` в корені репозиторію — звідти їх тягне застосунок по мережі.
+ * Той самий набір кладемо в assets, щоб на першому запуску без інтернету було що показати.
+ */
+val bundledRoutes = tasks.register<Sync>("syncBundledRoutes") {
+    from(rootProject.layout.projectDirectory.dir("routes"))
+    into(layout.buildDirectory.dir("generated/assets/routes"))
+}
+
 android {
     namespace = "com.kdelehoi.marshrutky"
     compileSdk = 36
@@ -33,6 +42,10 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+
+    sourceSets.getByName("main") {
+        assets.srcDir(bundledRoutes.map { it.destinationDir.parentFile })
     }
 }
 

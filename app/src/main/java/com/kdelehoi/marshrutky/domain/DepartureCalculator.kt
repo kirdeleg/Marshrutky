@@ -11,43 +11,30 @@ import java.time.LocalTime
 
 object DepartureCalculator {
 
-    // Розклад повторюється щотижня, тож далі за 7 днів шукати нема сенсу.
-    private const val MAX_DAYS_AHEAD = 8
-
     fun dayTypeOf(date: LocalDate): DayType = when (date.dayOfWeek) {
         DayOfWeek.SATURDAY -> DayType.SATURDAY
         DayOfWeek.SUNDAY -> DayType.SUNDAY
         else -> DayType.WEEKDAY
     }
 
+    fun timesOf(direction: Direction, dayType: DayType): List<LocalTime> =
+        parseTimes(direction.schedule.timesFor(dayType))
+
     fun parseTimes(times: List<String>): List<LocalTime> =
         times.mapNotNull(::parseTime).distinct().sorted()
 
-    fun upcoming(direction: Direction, now: LocalDateTime, limit: Int): List<Departure> {
-        val result = mutableListOf<Departure>()
-        val today = now.toLocalDate()
-
-        var dayOffset = 0L
-        while (result.size < limit && dayOffset < MAX_DAYS_AHEAD) {
-            val date = today.plusDays(dayOffset)
-            val times = parseTimes(direction.schedule.timesFor(dayTypeOf(date)))
-
-            for (time in times) {
-                val departureAt = LocalDateTime.of(date, time)
-                if (departureAt.isBefore(now)) continue
-
-                result += Departure(
-                    time = time,
-                    date = date,
-                    secondsUntil = Duration.between(now, departureAt).seconds,
-                    isToday = dayOffset == 0L
-                )
-                if (result.size == limit) break
-            }
-            dayOffset++
+    /**
+     * Усі сьогоднішні рейси напрямку. Ті, що вже поїхали, лишаються в списку з від'ємним
+     * відліком — на вкладці «Сьогодні» вони показані приглушено.
+     */
+    fun departuresToday(direction: Direction, now: LocalDateTime): List<Departure> {
+        val times = timesOf(direction, dayTypeOf(now.toLocalDate()))
+        return times.map { time ->
+            Departure(
+                time = time,
+                secondsUntil = Duration.between(now.toLocalTime(), time).seconds
+            )
         }
-
-        return result
     }
 
     private fun parseTime(raw: String): LocalTime? {

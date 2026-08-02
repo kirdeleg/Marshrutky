@@ -4,7 +4,6 @@ import com.kdelehoi.marshrutky.domain.model.DayType
 import com.kdelehoi.marshrutky.domain.model.Direction
 import com.kdelehoi.marshrutky.domain.model.WeekSchedule
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
@@ -13,13 +12,11 @@ import java.time.LocalTime
 
 class DepartureCalculatorTest {
 
+    // Маршрут 199: у будні шість рейсів, на вихідних не курсує.
     private val direction = Direction(
-        origin = "Київ",
-        destination = "Бровари",
+        label = "На Харків",
         schedule = WeekSchedule(
-            weekday = listOf("08:00", "09:00", "10:00"),
-            saturday = listOf("09:30"),
-            sunday = emptyList()
+            weekday = listOf("05:50", "07:30", "09:30", "13:30", "15:40", "17:30")
         )
     )
 
@@ -31,50 +28,38 @@ class DepartureCalculatorTest {
     }
 
     @Test
-    fun `upcoming skips departures that already left`() {
-        // Понеділок, 08:30 — рейс о 08:00 уже пішов.
-        val now = LocalDateTime.of(2026, 8, 3, 8, 30)
+    fun `departures of today keep the ones that already left`() {
+        // Понеділок, 10:00 — перші три рейси вже поїхали.
+        val departures = DepartureCalculator.departuresToday(direction, monday(10, 0))
 
-        val upcoming = DepartureCalculator.upcoming(direction, now, limit = 2)
-
-        assertEquals(listOf(LocalTime.of(9, 0), LocalTime.of(10, 0)), upcoming.map { it.time })
-        assertTrue(upcoming.all { it.isToday })
-        assertEquals(30 * 60L, upcoming.first().secondsUntil)
+        assertEquals(6, departures.size)
+        assertEquals(listOf(true, true, true, false, false, false), departures.map { it.hasLeft })
     }
 
     @Test
-    fun `upcoming includes a departure happening right now`() {
-        val now = LocalDateTime.of(2026, 8, 3, 9, 0)
+    fun `countdown is measured to the departure time`() {
+        val departures = DepartureCalculator.departuresToday(direction, monday(13, 0))
 
-        val upcoming = DepartureCalculator.upcoming(direction, now, limit = 1)
-
-        assertEquals(LocalTime.of(9, 0), upcoming.single().time)
-        assertEquals(0L, upcoming.single().secondsUntil)
+        val next = departures.first { !it.hasLeft }
+        assertEquals(LocalTime.of(13, 30), next.time)
+        assertEquals(30 * 60L, next.secondsUntil)
     }
 
     @Test
-    fun `upcoming rolls over to the next day with its own schedule`() {
-        // П'ятниця ввечері — далі субота з одним рейсом, потім понеділок.
-        val now = LocalDateTime.of(2026, 7, 31, 23, 0)
+    fun `a departure happening right now has not left yet`() {
+        val departures = DepartureCalculator.departuresToday(direction, monday(9, 30))
 
-        val upcoming = DepartureCalculator.upcoming(direction, now, limit = 2)
-
-        assertEquals(LocalDate.of(2026, 8, 1), upcoming[0].date)
-        assertEquals(LocalTime.of(9, 30), upcoming[0].time)
-        assertFalse(upcoming[0].isToday)
-
-        // Неділя порожня, тож наступний рейс аж у понеділок.
-        assertEquals(LocalDate.of(2026, 8, 3), upcoming[1].date)
-        assertEquals(LocalTime.of(8, 0), upcoming[1].time)
+        val current = departures.first { it.time == LocalTime.of(9, 30) }
+        assertEquals(0L, current.secondsUntil)
+        assertTrue(!current.hasLeft)
     }
 
     @Test
-    fun `empty schedule produces no departures`() {
-        val empty = direction.copy(schedule = WeekSchedule())
+    fun `no departures on a day the route does not run`() {
+        // Субота — розклад порожній, тож і рейсів немає.
+        val saturday = LocalDateTime.of(2026, 8, 1, 9, 0)
 
-        val upcoming = DepartureCalculator.upcoming(empty, LocalDateTime.of(2026, 8, 3, 8, 0), limit = 5)
-
-        assertTrue(upcoming.isEmpty())
+        assertTrue(DepartureCalculator.departuresToday(direction, saturday).isEmpty())
     }
 
     @Test
@@ -88,4 +73,6 @@ class DepartureCalculatorTest {
             parsed
         )
     }
+
+    private fun monday(hour: Int, minute: Int) = LocalDateTime.of(2026, 8, 3, hour, minute)
 }

@@ -1,14 +1,12 @@
 package com.kdelehoi.marshrutky.domain.model
 
-import java.time.LocalDate
 import java.time.LocalTime
 
+/** Рейс сьогоднішнього дня. Від'ємний [secondsUntil] означає, що маршрутка вже поїхала. */
 data class Departure(
     val time: LocalTime,
-    val date: LocalDate,
-    val secondsUntil: Long,
-    val isToday: Boolean
+    val secondsUntil: Long
 ) {
-    val minutesUntil: Long
-        get() = secondsUntil / 60
+    val hasLeft: Boolean
+        get() = secondsUntil < 0
 }

@@ -5,17 +5,10 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.kdelehoi.marshrutky.R
 import com.kdelehoi.marshrutky.domain.model.DayType
-import com.kdelehoi.marshrutky.domain.model.Departure
-import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
-import java.time.format.TextStyle
-import java.util.Locale
 
 private val TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm")
-
-// Інтерфейс україномовний, тож назви днів беремо з української локалі, а не з локалі системи.
-private val UK_LOCALE = Locale.forLanguageTag("uk")
 
 fun LocalTime.formatted(): String = format(TIME_FORMATTER)
 
@@ -35,14 +28,6 @@ fun countdownText(secondsUntil: Long): String {
             }
         }
     }
-}
-
-@Composable
-fun dayLabel(departure: Departure, today: LocalDate): String? = when {
-    departure.isToday -> null
-    departure.date == today.plusDays(1) -> stringResource(R.string.tomorrow)
-    else -> departure.date.dayOfWeek.getDisplayName(TextStyle.FULL_STANDALONE, UK_LOCALE)
-        .replaceFirstChar { it.titlecase(UK_LOCALE) }
 }
 
 @Composable

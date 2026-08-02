@@ -4,9 +4,10 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.kdelehoi.marshrutky.domain.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -14,27 +15,35 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 
 class PreferencesRepository(private val context: Context) {
 
-    val selection: Flow<Selection> = context.dataStore.data.map { preferences ->
-        Selection(
-            routeId = preferences[ROUTE_ID_KEY],
-            directionIndex = preferences[DIRECTION_INDEX_KEY] ?: 0
-        )
+    val favoriteRouteIds: Flow<Set<String>> = context.dataStore.data.map { preferences ->
+        preferences[FAVORITES_KEY].orEmpty()
     }
 
-    suspend fun saveSelection(routeId: String, directionIndex: Int) {
+    val themeMode: Flow<ThemeMode> = context.dataStore.data.map { preferences ->
+        preferences[THEME_MODE_KEY]
+            ?.let { stored -> ThemeMode.entries.firstOrNull { it.name == stored } }
+            ?: ThemeMode.SYSTEM
+    }
+
+    suspend fun toggleFavorite(routeId: String) {
         context.dataStore.edit { preferences ->
-            preferences[ROUTE_ID_KEY] = routeId
-            preferences[DIRECTION_INDEX_KEY] = directionIndex
+            val current = preferences[FAVORITES_KEY].orEmpty()
+            preferences[FAVORITES_KEY] = if (routeId in current) {
+                current - routeId
+            } else {
+                current + routeId
+            }
         }
     }
 
-    data class Selection(
-        val routeId: String?,
-        val directionIndex: Int
-    )
+    suspend fun saveThemeMode(themeMode: ThemeMode) {
+        context.dataStore.edit { preferences ->
+            preferences[THEME_MODE_KEY] = themeMode.name
+        }
+    }
 
-    companion object {
-        private val ROUTE_ID_KEY = stringPreferencesKey("selected_route_id")
-        private val DIRECTION_INDEX_KEY = intPreferencesKey("selected_direction_index")
+    private companion object {
+        val FAVORITES_KEY = stringSetPreferencesKey("favorite_route_ids")
+        val THEME_MODE_KEY = stringPreferencesKey("theme_mode")
     }
 }
