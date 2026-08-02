@@ -8,6 +8,7 @@
 
 import json
 import pathlib
+import re
 
 ROUTES = pathlib.Path(__file__).resolve().parent.parent / "routes"
 
@@ -107,7 +108,10 @@ def write(file_name, number, name, directions):
     payload = {"name": name, "directions": directions}
     if number:
         payload = {"number": number, **payload}
-    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    text = json.dumps(payload, ensure_ascii=False, indent=2)
+    # Списки часу тримаємо в один рядок, як у файлах, заповнених руками.
+    text = re.sub(r"\[[\s\n]*((?:\"\d\d:\d\d\",?\s*)+)\]", lambda m: "[" + " ".join(m.group(1).split()) + "]", text)
+    path.write_text(text + "\n", encoding="utf-8")
     return path
 
 
