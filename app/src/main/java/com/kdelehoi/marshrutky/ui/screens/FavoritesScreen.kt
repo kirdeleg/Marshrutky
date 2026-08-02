@@ -32,6 +32,9 @@ import java.time.LocalDateTime
 
 private const val DEPARTURES_PER_DIRECTION = 3
 
+/** Спільний бічний відступ картки: заголовок і напрямки мають починатися з однієї лінії. */
+private val CARD_INSET = 20.dp
+
 @Composable
 fun FavoritesScreen(
     state: ScheduleUiState,
@@ -87,12 +90,17 @@ private fun FavoriteRouteCard(
         Text(
             text = route.title,
             style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 14.dp)
+            modifier = Modifier.padding(
+                start = CARD_INSET,
+                end = CARD_INSET,
+                top = 18.dp,
+                bottom = 14.dp
+            )
         )
 
         DirectionColumns(
             directions = route.directions,
-            modifier = Modifier.padding(bottom = 18.dp)
+            modifier = Modifier.padding(start = CARD_INSET, end = CARD_INSET, bottom = 18.dp)
         ) { direction ->
             DirectionDepartures(direction = direction, now = now)
         }

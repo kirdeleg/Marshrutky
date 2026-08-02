@@ -19,6 +19,8 @@ import com.kdelehoi.marshrutky.domain.model.Direction
 
 /**
  * Два напрямки поруч: лівий стовпчик — перший напрямок з файлу маршруту, правий — другий.
+ * Бічних відступів стовпчики не мають — їх задає той, хто викликає, щоб текст напрямків
+ * стояв рівно під заголовком картки. Проміжок між колонками тримає роздільник.
  */
 @Composable
 fun DirectionColumns(
@@ -33,13 +35,11 @@ fun DirectionColumns(
     ) {
         directions.forEachIndexed { index, direction ->
             if (index > 0) {
-                VerticalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                VerticalDivider(modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp))
             }
 
             Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 12.dp),
+                modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Text(
