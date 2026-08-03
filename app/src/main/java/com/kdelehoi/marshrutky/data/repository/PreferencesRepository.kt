@@ -2,6 +2,7 @@ package com.kdelehoi.marshrutky.data.repository
 
 import android.content.Context
 import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
@@ -17,9 +18,11 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 
 class PreferencesRepository(private val context: Context) {
 
-    val favoriteRouteIds: Flow<Set<String>> = context.dataStore.data.map { preferences ->
-        preferences[FAVORITES_KEY].orEmpty()
-    }
+    /**
+     * Обране в порядку, який задав користувач. Раніше зберігалася множина без порядку — якщо
+     * новий ключ ще не записаний, беремо стару множину за алфавітом ідентифікаторів.
+     */
+    val favoriteRouteIds: Flow<List<String>> = context.dataStore.data.map(::readFavorites)
 
     val themeMode: Flow<ThemeMode> = context.dataStore.data.map { preferences ->
         preferences[THEME_MODE_KEY]
@@ -37,15 +40,19 @@ class PreferencesRepository(private val context: Context) {
         preferences[SELECTED_STOP_KEY]
     }
 
+    /** Нове обране стає в кінець списку — туди, де користувач його й шукатиме. */
     suspend fun toggleFavorite(routeId: String) {
         context.dataStore.edit { preferences ->
-            val current = preferences[FAVORITES_KEY].orEmpty()
-            preferences[FAVORITES_KEY] = if (routeId in current) {
-                current - routeId
-            } else {
-                current + routeId
-            }
+            val current = readFavorites(preferences)
+            writeFavorites(
+                preferences,
+                if (routeId in current) current - routeId else current + routeId
+            )
         }
+    }
+
+    suspend fun saveFavoriteOrder(routeIds: List<String>) {
+        context.dataStore.edit { preferences -> writeFavorites(preferences, routeIds) }
     }
 
     suspend fun saveThemeMode(themeMode: ThemeMode) {
@@ -66,8 +73,24 @@ class PreferencesRepository(private val context: Context) {
         }
     }
 
+    private fun readFavorites(preferences: Preferences): List<String> =
+        preferences[FAVORITES_ORDER_KEY]
+            ?.split(SEPARATOR)
+            ?.filter { it.isNotBlank() }
+            ?: preferences[LEGACY_FAVORITES_KEY].orEmpty().sorted()
+
+    private fun writeFavorites(preferences: MutablePreferences, routeIds: List<String>) {
+        preferences[FAVORITES_ORDER_KEY] = routeIds.joinToString(SEPARATOR)
+        // Стару множину прибираємо, щоб вона не перебивала порядок після перевстановлення.
+        preferences.remove(LEGACY_FAVORITES_KEY)
+    }
+
     private companion object {
-        val FAVORITES_KEY = stringSetPreferencesKey("favorite_route_ids")
+        /** Ідентифікатор маршруту — це ім'я файлу, тож перенесення рядка в ньому не буде. */
+        const val SEPARATOR = "\n"
+
+        val FAVORITES_ORDER_KEY = stringPreferencesKey("favorite_route_ids_ordered")
+        val LEGACY_FAVORITES_KEY = stringSetPreferencesKey("favorite_route_ids")
         val THEME_MODE_KEY = stringPreferencesKey("theme_mode")
         val LAST_SYNCED_AT_KEY = longPreferencesKey("last_synced_at")
         val SELECTED_STOP_KEY = stringPreferencesKey("selected_stop")

@@ -27,14 +27,15 @@ enum class SyncStatus {
 data class ScheduleUiState(
     val isLoading: Boolean = true,
     val routes: List<Route> = emptyList(),
-    val favoriteRouteIds: Set<String> = emptySet(),
+    val favoriteRouteIds: List<String> = emptyList(),
     val now: LocalDateTime = LocalDateTime.now(),
     val syncStatus: SyncStatus = SyncStatus.IDLE,
     val lastSyncedAt: Instant? = null,
     val selectedStop: String? = null
 ) {
+    /** Саме в порядку, який задав користувач, а не в тому, у якому маршрути лежать у файлах. */
     val favoriteRoutes: List<Route>
-        get() = routes.filter { it.id in favoriteRouteIds }
+        get() = favoriteRouteIds.mapNotNull { id -> routes.firstOrNull { it.id == id } }
 
     val today: DayType
         get() = DepartureCalculator.dayTypeOf(now.toLocalDate())
@@ -61,6 +62,12 @@ class ScheduleViewModel(
     fun toggleFavorite(routeId: String) {
         viewModelScope.launch {
             preferencesRepository.toggleFavorite(routeId)
+        }
+    }
+
+    fun saveFavoriteOrder(routeIds: List<String>) {
+        viewModelScope.launch {
+            preferencesRepository.saveFavoriteOrder(routeIds)
         }
     }
 

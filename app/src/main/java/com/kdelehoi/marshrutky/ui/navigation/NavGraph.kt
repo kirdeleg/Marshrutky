@@ -28,6 +28,7 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import com.kdelehoi.marshrutky.domain.model.ThemeMode
+import com.kdelehoi.marshrutky.ui.components.TabChangeHaptics
 import com.kdelehoi.marshrutky.ui.components.goToPage
 import com.kdelehoi.marshrutky.ui.screens.FavoritesScreen
 import com.kdelehoi.marshrutky.ui.screens.NearestScreen
@@ -69,6 +70,7 @@ fun MarshrutkyNavGraph(
                     themeMode = themeMode,
                     onOpenRoute = { routeId -> backStack.add(Screen.RouteDetail(routeId)) },
                     onToggleFavorite = scheduleViewModel::toggleFavorite,
+                    onReorderFavorites = scheduleViewModel::saveFavoriteOrder,
                     onSelectThemeMode = settingsViewModel::selectThemeMode,
                     onSelectStop = scheduleViewModel::selectStop,
                     onRefresh = scheduleViewModel::refresh
@@ -93,12 +95,15 @@ private fun MainTabs(
     themeMode: ThemeMode,
     onOpenRoute: (String) -> Unit,
     onToggleFavorite: (String) -> Unit,
+    onReorderFavorites: (List<String>) -> Unit,
     onSelectThemeMode: (ThemeMode) -> Unit,
     onSelectStop: (String) -> Unit,
     onRefresh: () -> Unit
 ) {
     val pagerState = rememberPagerState(pageCount = { TopLevelDestination.entries.size })
     val scope = rememberCoroutineScope()
+
+    TabChangeHaptics(pagerState)
 
     Scaffold(
         // Верхні відступи кожен екран розбирає власним Scaffold, тут лишається тільки нижня панель.
@@ -131,7 +136,8 @@ private fun MainTabs(
             when (TopLevelDestination.entries[page]) {
                 TopLevelDestination.FAVORITES -> FavoritesScreen(
                     state = state,
-                    onOpenRoute = onOpenRoute
+                    onOpenRoute = onOpenRoute,
+                    onReorder = onReorderFavorites
                 )
 
                 TopLevelDestination.NEAREST -> NearestScreen(

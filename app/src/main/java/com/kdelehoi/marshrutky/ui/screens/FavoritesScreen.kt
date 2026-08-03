@@ -8,13 +8,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -26,6 +29,8 @@ import com.kdelehoi.marshrutky.domain.model.Route
 import com.kdelehoi.marshrutky.ui.components.DirectionColumns
 import com.kdelehoi.marshrutky.ui.components.ScreenMessage
 import com.kdelehoi.marshrutky.ui.components.SearchableScaffold
+import com.kdelehoi.marshrutky.ui.components.rememberReorderState
+import com.kdelehoi.marshrutky.ui.components.reorderable
 import com.kdelehoi.marshrutky.ui.components.countdownText
 import com.kdelehoi.marshrutky.ui.components.formatted
 import com.kdelehoi.marshrutky.viewmodel.ScheduleUiState
@@ -39,11 +44,32 @@ private val CARD_INSET = 20.dp
 @Composable
 fun FavoritesScreen(
     state: ScheduleUiState,
-    onOpenRoute: (String) -> Unit
+    onOpenRoute: (String) -> Unit,
+    onReorder: (List<String>) -> Unit
 ) {
     SearchableScaffold { query ->
         val favorites = state.favoriteRoutes
-        val visible = favorites.filter { it.matches(query) }
+        // Порядок правимо локально, поки картку тягнуть, і зберігаємо вже після відпускання —
+        // інакше кожен обмін місцями їздив би в сховище й вертався звідти з затримкою.
+        val ordered = remember { mutableStateListOf<Route>() }
+        LaunchedEffect(favorites) {
+            if (ordered != favorites) {
+                ordered.clear()
+                ordered.addAll(favorites)
+            }
+        }
+
+        val visible = ordered.filter { it.matches(query) }
+        // Під час пошуку видно не весь список, тож індекси перетягування не збігалися б із
+        // реальним порядком. Міняти місцями дозволяємо тільки на повному списку.
+        val canReorder = query.isBlank()
+
+        val listState = rememberLazyListState()
+        val reorder = rememberReorderState(
+            listState = listState,
+            onMove = { from, to -> ordered.add(to, ordered.removeAt(from)) },
+            onSettled = { onReorder(ordered.map { it.id }) }
+        )
 
         when {
             favorites.isEmpty() -> ScreenMessage(
@@ -57,16 +83,29 @@ fun FavoritesScreen(
             )
 
             else -> LazyColumn(
+                state = listState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(visible, key = { it.id }) { route ->
+                itemsIndexed(visible, key = { _, route -> route.id }) { index, route ->
                     FavoriteRouteCard(
                         route = route,
                         now = state.now,
                         onClick = { onOpenRoute(route.id) },
-                        modifier = Modifier.animateItem()
+                        modifier = reorder
+                            .itemModifier(index, animate = Modifier.animateItem())
+                            .then(
+                                if (canReorder) {
+                                    Modifier.reorderable(
+                                        state = reorder,
+                                        key = route.id,
+                                        indexOf = { id -> ordered.indexOfFirst { it.id == id } }
+                                    )
+                                } else {
+                                    Modifier
+                                }
+                            )
                     )
                 }
             }
