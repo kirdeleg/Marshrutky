@@ -1,6 +1,5 @@
 package com.kdelehoi.marshrutky.data.repository
 
-import android.content.Context
 import android.util.Log
 import com.kdelehoi.marshrutky.data.local.CachedRoute
 import com.kdelehoi.marshrutky.data.local.RoutesCache
@@ -19,22 +18,18 @@ sealed interface RefreshResult {
 }
 
 /**
- * Джерело розкладів. Показуємо те, що вже є на пристрої, а свіже підвантажуємо з GitHub у фоні.
- * Порядок пошуку локальних даних: кеш попереднього завантаження, а якщо його ще немає —
- * знімок, вшитий в assets на випадок першого запуску без інтернету.
+ * Джерело розкладів. Усі дані живуть у репозиторії на GitHub: показуємо збережене з минулого
+ * разу, а свіже підтягуємо у фоні. У самому застосунку розкладів немає, тож першому запуску
+ * потрібна мережа.
  */
 class ScheduleRepository(
-    private val context: Context,
     private val cache: RoutesCache,
     private val remote: RoutesRemoteDataSource,
     private val json: Json
 ) {
 
     suspend fun loadLocalRoutes(): List<Route> = withContext(Dispatchers.IO) {
-        val cached = cache.read().map { it.fileName to it.content }
-        val files = cached.ifEmpty { readBundled() }
-
-        files.toRoutes()
+        cache.read().map { it.fileName to it.content }.toRoutes()
     }
 
     suspend fun refresh(): RefreshResult = withContext(Dispatchers.IO) {
@@ -64,17 +59,6 @@ class ScheduleRepository(
         }
     }
 
-    private fun readBundled(): List<Pair<String, String>> =
-        context.assets.list(BUNDLED_DIR).orEmpty()
-            .filter { it.endsWith(JSON_SUFFIX) }
-            .mapNotNull { fileName ->
-                runCatching {
-                    fileName to context.assets.open("$BUNDLED_DIR/$fileName")
-                        .bufferedReader()
-                        .use { it.readText() }
-                }.getOrNull()
-            }
-
     private fun List<Pair<String, String>>.toRoutes(): List<Route> =
         mapNotNull { (fileName, content) -> parseRoute(fileName, content) }
             .sortedWith(compareBy({ it.number?.toIntOrNull() ?: Int.MAX_VALUE }, { it.number ?: it.name }))
@@ -94,7 +78,6 @@ class ScheduleRepository(
     }
 
     private companion object {
-        const val BUNDLED_DIR = "routes"
         const val JSON_SUFFIX = ".json"
         const val TAG = "ScheduleRepository"
     }

@@ -14,7 +14,7 @@ val appModule = module {
     single { Json { ignoreUnknownKeys = true } }
     single { RoutesCache(androidContext(), get()) }
     single { RoutesRemoteDataSource(get()) }
-    single { ScheduleRepository(androidContext(), get(), get(), get()) }
+    single { ScheduleRepository(get(), get(), get()) }
     single { PreferencesRepository(androidContext()) }
     single { ScheduleViewModel(get(), get()) }
     single { SettingsViewModel(get()) }
