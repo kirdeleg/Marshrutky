@@ -17,13 +17,13 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
@@ -47,8 +47,8 @@ fun MarshrutkyNavGraph(
     settingsViewModel: SettingsViewModel
 ) {
     val backStack = rememberNavBackStack(Screen.Main)
-    val state by scheduleViewModel.state.collectAsState()
-    val themeMode by settingsViewModel.themeMode.collectAsState()
+    val state by scheduleViewModel.state.collectAsStateWithLifecycle()
+    val themeMode by settingsViewModel.themeMode.collectAsStateWithLifecycle()
 
     // Типовий перехід NavDisplay — згасання, однакове в обидва боки, тож по анімації не видно,
     // заходиш ти вглиб чи повертаєшся. Пружина з motionScheme дає той самий рух, що й решта теми.
