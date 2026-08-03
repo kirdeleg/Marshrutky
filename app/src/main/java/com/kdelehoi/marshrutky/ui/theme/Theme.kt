@@ -1,5 +1,6 @@
 package com.kdelehoi.marshrutky.ui.theme
 
+import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialExpressiveTheme
@@ -23,10 +24,13 @@ fun MarshrutkyTheme(
     }
 
     val context = LocalContext.current
-    val colorScheme = if (darkTheme) {
-        dynamicDarkColorScheme(context)
-    } else {
-        dynamicLightColorScheme(context)
+    // Кольори зі шпалер з'явилися лише в Android 12; на старіших версіях беремо власну палітру.
+    val dynamicColors = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    val colorScheme = when {
+        dynamicColors && darkTheme -> dynamicDarkColorScheme(context)
+        dynamicColors -> dynamicLightColorScheme(context)
+        darkTheme -> DarkColors
+        else -> LightColors
     }
 
     MaterialExpressiveTheme(

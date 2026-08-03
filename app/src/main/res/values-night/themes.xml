@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.Marshrutky" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowSplashScreenBackground">@color/splash_background</item>
-    </style>
+    <style name="Theme.Marshrutky" parent="android:Theme.Material.NoActionBar" />
 </resources>

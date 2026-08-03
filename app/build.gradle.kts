@@ -30,6 +30,11 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+    lint {
+        // Скорочена перевірка, яку запускає збірка, пропускала NewApi — через це в APK потрапив
+        // виклик API 31 при minSdk 26, тобто краш на старті на Android 8–11. Хай валить збірку.
+        fatal += "NewApi"
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
