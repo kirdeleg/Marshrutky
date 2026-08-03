@@ -16,28 +16,32 @@ import java.time.Instant
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
+/** Усе, що застосунок пам'ятає між запусками. */
+data class UserPreferences(
+    /** Обране в порядку, який задав користувач. */
+    val favoriteRouteIds: List<String> = emptyList(),
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    /** Коли востаннє вдалося дістати розклади з мережі. `null` — ще жодного разу. */
+    val lastSyncedAt: Instant? = null,
+    /** Зупинка на вкладці «Найближчі». `null` — користувач ще нічого не вибирав. */
+    val selectedStop: String? = null
+)
+
 class PreferencesRepository(private val context: Context) {
 
     /**
-     * Обране в порядку, який задав користувач. Раніше зберігалася множина без порядку — якщо
-     * новий ключ ще не записаний, беремо стару множину за алфавітом ідентифікаторів.
+     * Один потік на всі налаштування: чотири окремі `map` над тим самим DataStore означали б
+     * чотирьох читачів одного файлу замість одного.
      */
-    val favoriteRouteIds: Flow<List<String>> = context.dataStore.data.map(::readFavorites)
-
-    val themeMode: Flow<ThemeMode> = context.dataStore.data.map { preferences ->
-        preferences[THEME_MODE_KEY]
-            ?.let { stored -> ThemeMode.entries.firstOrNull { it.name == stored } }
-            ?: ThemeMode.SYSTEM
-    }
-
-    /** Коли востаннє вдалося дістати розклади з мережі. `null` — ще жодного разу. */
-    val lastSyncedAt: Flow<Instant?> = context.dataStore.data.map { preferences ->
-        preferences[LAST_SYNCED_AT_KEY]?.let(Instant::ofEpochSecond)
-    }
-
-    /** Зупинка на вкладці «Найближчі». `null` — користувач ще нічого не вибирав. */
-    val selectedStop: Flow<String?> = context.dataStore.data.map { preferences ->
-        preferences[SELECTED_STOP_KEY]
+    val preferences: Flow<UserPreferences> = context.dataStore.data.map { stored ->
+        UserPreferences(
+            favoriteRouteIds = readFavorites(stored),
+            themeMode = stored[THEME_MODE_KEY]
+                ?.let { name -> ThemeMode.entries.firstOrNull { it.name == name } }
+                ?: ThemeMode.SYSTEM,
+            lastSyncedAt = stored[LAST_SYNCED_AT_KEY]?.let(Instant::ofEpochSecond),
+            selectedStop = stored[SELECTED_STOP_KEY]
+        )
     }
 
     /** Нове обране стає в кінець списку — туди, де користувач його й шукатиме. */
