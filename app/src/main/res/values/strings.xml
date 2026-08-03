@@ -5,7 +5,7 @@
     <string name="tab_favorites">Обране</string>
     <string name="tab_nearest">Найближчі</string>
     <string name="tab_routes">Маршрути</string>
-    <string name="tab_settings">Налаштування</string>
+    <string name="tab_settings">Параметри</string>
 
     <!-- Search -->
     <string name="search_placeholder">Номер або назва маршруту</string>
@@ -19,7 +19,7 @@
 
     <!-- Routes -->
     <string name="routes_empty_title">Маршрутів немає</string>
-    <string name="routes_empty_subtitle">Розклади завантажуються з інтернету. Перевір зв\'язок і натисни «Оновити зараз» у Налаштуваннях.</string>
+    <string name="routes_empty_subtitle">Розклади завантажуються з інтернету. Перевір зв\'язок і натисни «Оновити зараз» у Параметрах.</string>
     <string name="favorite_add">Додати в обране</string>
     <string name="favorite_remove">Прибрати з обраного</string>
 

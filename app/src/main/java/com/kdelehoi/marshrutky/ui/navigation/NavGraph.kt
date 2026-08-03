@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
@@ -89,7 +90,15 @@ private fun MainTabs(
                         selected = index == pagerState.currentPage,
                         onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
                         icon = { Icon(destination.icon, contentDescription = null) },
-                        label = { Text(stringResource(destination.labelRes)) }
+                        label = {
+                            // На чотирьох вкладках задовга мітка переноситься на другий рядок
+                            // і вилазить за межі панелі, тож краще обрізати.
+                            Text(
+                                text = stringResource(destination.labelRes),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     )
                 }
             }
