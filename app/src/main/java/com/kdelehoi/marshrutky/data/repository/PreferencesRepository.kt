@@ -3,18 +3,24 @@ package com.kdelehoi.marshrutky.data.repository
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.MutablePreferences
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
+import androidx.datastore.preferences.preferencesDataStoreFile
 import com.kdelehoi.marshrutky.domain.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.Instant
 
-private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
+/**
+ * Сховище налаштувань на пристрої. Ім'я файлу те саме, що й раніше, — інакше після оновлення
+ * застосунку обране й тема опинилися б у новому порожньому файлі.
+ */
+fun createSettingsDataStore(context: Context): DataStore<Preferences> =
+    PreferenceDataStoreFactory.create { context.preferencesDataStoreFile("settings") }
 
 /** Усе, що застосунок пам'ятає між запусками. */
 data class UserPreferences(
@@ -27,13 +33,13 @@ data class UserPreferences(
     val selectedStop: String? = null
 )
 
-class PreferencesRepository(private val context: Context) {
+class PreferencesRepository(private val dataStore: DataStore<Preferences>) {
 
     /**
      * Один потік на всі налаштування: чотири окремі `map` над тим самим DataStore означали б
      * чотирьох читачів одного файлу замість одного.
      */
-    val preferences: Flow<UserPreferences> = context.dataStore.data.map { stored ->
+    val preferences: Flow<UserPreferences> = dataStore.data.map { stored ->
         UserPreferences(
             favoriteRouteIds = readFavorites(stored),
             themeMode = stored[THEME_MODE_KEY]
@@ -46,7 +52,7 @@ class PreferencesRepository(private val context: Context) {
 
     /** Нове обране стає в кінець списку — туди, де користувач його й шукатиме. */
     suspend fun toggleFavorite(routeId: String) {
-        context.dataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             val current = readFavorites(preferences)
             writeFavorites(
                 preferences,
@@ -56,23 +62,23 @@ class PreferencesRepository(private val context: Context) {
     }
 
     suspend fun saveFavoriteOrder(routeIds: List<String>) {
-        context.dataStore.edit { preferences -> writeFavorites(preferences, routeIds) }
+        dataStore.edit { preferences -> writeFavorites(preferences, routeIds) }
     }
 
     suspend fun saveThemeMode(themeMode: ThemeMode) {
-        context.dataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             preferences[THEME_MODE_KEY] = themeMode.name
         }
     }
 
     suspend fun saveLastSyncedAt(instant: Instant) {
-        context.dataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             preferences[LAST_SYNCED_AT_KEY] = instant.epochSecond
         }
     }
 
     suspend fun saveSelectedStop(stopName: String) {
-        context.dataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             preferences[SELECTED_STOP_KEY] = stopName
         }
     }
