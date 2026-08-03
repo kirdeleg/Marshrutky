@@ -7,20 +7,26 @@ import com.kdelehoi.marshrutky.data.remote.RoutesRemoteDataSource
 import com.kdelehoi.marshrutky.domain.model.Route
 import com.kdelehoi.marshrutky.domain.model.RouteFile
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import java.io.IOException
 
 sealed interface RefreshResult {
-    data class Updated(val routes: List<Route>) : RefreshResult
+    data object Updated : RefreshResult
     data object UpToDate : RefreshResult
     data object Failed : RefreshResult
 }
 
 /**
- * Джерело розкладів. Усі дані живуть у репозиторії на GitHub: показуємо збережене з минулого
- * разу, а свіже підтягуємо у фоні. У самому застосунку розкладів немає, тож першому запуску
- * потрібна мережа.
+ * Джерело розкладів і власник завантаженого списку маршрутів. Усі дані живуть у репозиторії на
+ * GitHub: показуємо збережене з минулого разу, а свіже підтягуємо у фоні. У самому застосунку
+ * розкладів немає, тож першому запуску потрібна мережа.
+ *
+ * Маршрути лежать саме тут, а не у ViewModel, бо ViewModel живе рівно стільки, скільки екран, і
+ * при кожному перестворенні довелося б перечитувати кеш з диска.
  */
 class ScheduleRepository(
     private val cache: RoutesCache,
@@ -28,8 +34,17 @@ class ScheduleRepository(
     private val json: Json
 ) {
 
-    suspend fun loadLocalRoutes(): List<Route> = withContext(Dispatchers.IO) {
-        cache.read().map { it.fileName to it.content }.toRoutes()
+    private val _routes = MutableStateFlow<List<Route>?>(null)
+
+    /** `null`, поки кеш ще не прочитано — це відрізняє «завантажуємо» від «маршрутів немає». */
+    val routes: StateFlow<List<Route>?> = _routes.asStateFlow()
+
+    /** Читає кеш один раз за життя процесу: далі список уже в пам'яті. */
+    suspend fun loadCached() {
+        if (_routes.value != null) return
+        _routes.value = withContext(Dispatchers.IO) {
+            cache.read().map { it.fileName to it.content }.toRoutes()
+        }
     }
 
     suspend fun refresh(): RefreshResult = withContext(Dispatchers.IO) {
@@ -48,8 +63,9 @@ class ScheduleRepository(
                     ?: CachedRoute(route.fileName, route.sha, remote.download(route))
             }
             cache.replaceWith(fresh)
+            _routes.value = fresh.map { it.fileName to it.content }.toRoutes()
 
-            RefreshResult.Updated(fresh.map { it.fileName to it.content }.toRoutes())
+            RefreshResult.Updated
         } catch (e: IOException) {
             Log.w(TAG, "Не вдалося оновити розклади", e)
             RefreshResult.Failed

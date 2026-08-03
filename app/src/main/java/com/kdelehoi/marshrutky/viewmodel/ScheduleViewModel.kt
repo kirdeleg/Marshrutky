@@ -2,19 +2,24 @@ package com.kdelehoi.marshrutky.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.kdelehoi.marshrutky.data.remote.NetworkMonitor
 import com.kdelehoi.marshrutky.data.repository.PreferencesRepository
 import com.kdelehoi.marshrutky.data.repository.RefreshResult
 import com.kdelehoi.marshrutky.data.repository.ScheduleRepository
 import com.kdelehoi.marshrutky.domain.DepartureCalculator
 import com.kdelehoi.marshrutky.domain.model.DayType
 import com.kdelehoi.marshrutky.domain.model.Route
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDateTime
 
@@ -45,112 +50,112 @@ data class ScheduleUiState(
 
 class ScheduleViewModel(
     private val scheduleRepository: ScheduleRepository,
-    private val preferencesRepository: PreferencesRepository
+    private val preferencesRepository: PreferencesRepository,
+    private val networkMonitor: NetworkMonitor
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(ScheduleUiState())
-    val state: StateFlow<ScheduleUiState> = _state.asStateFlow()
+    private val syncStatus = MutableStateFlow(SyncStatus.IDLE)
 
-    init {
-        loadRoutes()
-        observeFavorites()
-        observeLastSync()
-        observeSelectedStop()
-        startClock()
-    }
-
-    fun toggleFavorite(routeId: String) {
-        viewModelScope.launch {
-            preferencesRepository.toggleFavorite(routeId)
-        }
-    }
-
-    fun saveFavoriteOrder(routeIds: List<String>) {
-        viewModelScope.launch {
-            preferencesRepository.saveFavoriteOrder(routeIds)
-        }
-    }
-
-    fun selectStop(stopName: String) {
-        viewModelScope.launch {
-            preferencesRepository.saveSelectedStop(stopName)
-        }
-    }
-
-    fun refresh() {
-        if (_state.value.syncStatus == SyncStatus.IN_PROGRESS) return
-
-        viewModelScope.launch {
-            _state.update { it.copy(syncStatus = SyncStatus.IN_PROGRESS) }
-
-            when (val result = scheduleRepository.refresh()) {
-                is RefreshResult.Updated -> {
-                    _state.update { it.copy(routes = result.routes, syncStatus = SyncStatus.IDLE) }
-                    preferencesRepository.saveLastSyncedAt(Instant.now())
-                }
-
-                RefreshResult.UpToDate -> {
-                    _state.update { it.copy(syncStatus = SyncStatus.IDLE) }
-                    preferencesRepository.saveLastSyncedAt(Instant.now())
-                }
-
-                RefreshResult.Failed -> _state.update { it.copy(syncStatus = SyncStatus.FAILED) }
-            }
-        }
-    }
-
-    /** Спершу показуємо те, що вже є на пристрої, і аж потім ідемо по свіже. */
-    private fun loadRoutes() {
-        viewModelScope.launch {
-            val routes = scheduleRepository.loadLocalRoutes()
-            _state.update { it.copy(isLoading = false, routes = routes, now = LocalDateTime.now()) }
-            refresh()
-        }
-    }
-
-    private fun observeFavorites() {
-        viewModelScope.launch {
-            preferencesRepository.favoriteRouteIds.collect { ids ->
-                _state.update { it.copy(favoriteRouteIds = ids) }
-            }
-        }
-    }
-
-    private fun observeLastSync() {
-        viewModelScope.launch {
-            preferencesRepository.lastSyncedAt.collect { instant ->
-                _state.update { it.copy(lastSyncedAt = instant) }
-            }
-        }
-    }
-
-    private fun observeSelectedStop() {
-        viewModelScope.launch {
-            preferencesRepository.selectedStop.collect { stopName ->
-                _state.update { it.copy(selectedStop = stopName) }
-            }
+    /**
+     * Поточний час із точністю до хвилини. Холодний Flow, тож він працює рівно доти, доки на
+     * екран хтось дивиться: щойно застосунок згорнули, підписник відвалюється і годинник
+     * зупиняється сам. Прокидання рахуємо щоразу від поточного часу, тому дрейф не накопичується.
+     */
+    private val minutes: Flow<LocalDateTime> = flow {
+        while (true) {
+            val now = LocalDateTime.now()
+            emit(now)
+            delay(millisUntilNextMinute(now))
         }
     }
 
     /**
-     * Відлік показує хвилини, тож будимося рівно на межі хвилини, а не щосекунди: інакше
-     * застосунок 59 разів на хвилину перебудовує весь екран заради тієї самої цифри.
-     * Прокидання рахуємо щоразу від поточного часу, тому дрейф не накопичується.
+     * `WhileSubscribed` — це те, що робить «нічого не робити у фоні» властивістю конструкції, а
+     * не домовленістю. Пауза перед зупинкою потрібна, щоб поворот екрана чи короткий перехід між
+     * екранами не перезапускали весь ланцюжок дарма.
      */
-    private fun startClock() {
+    val state: StateFlow<ScheduleUiState> = combine(
+        scheduleRepository.routes,
+        preferencesRepository.preferences,
+        minutes,
+        syncStatus
+    ) { routes, preferences, now, sync ->
+        ScheduleUiState(
+            isLoading = routes == null,
+            routes = routes.orEmpty(),
+            favoriteRouteIds = preferences.favoriteRouteIds,
+            now = now,
+            syncStatus = sync,
+            lastSyncedAt = preferences.lastSyncedAt,
+            selectedStop = preferences.selectedStop
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(UNSUBSCRIBE_DELAY_MILLIS),
+        initialValue = ScheduleUiState()
+    )
+
+    init {
+        loadAndSync()
+    }
+
+    fun toggleFavorite(routeId: String) {
+        viewModelScope.launch { preferencesRepository.toggleFavorite(routeId) }
+    }
+
+    fun saveFavoriteOrder(routeIds: List<String>) {
+        viewModelScope.launch { preferencesRepository.saveFavoriteOrder(routeIds) }
+    }
+
+    fun selectStop(stopName: String) {
+        viewModelScope.launch { preferencesRepository.saveSelectedStop(stopName) }
+    }
+
+    /** Кнопка «Оновити зараз»: іде по мережу незалежно від того, коли синхронізувалися востаннє. */
+    fun refresh() = sync(isManual = true)
+
+    /** Спершу показуємо те, що вже є на пристрої, і аж потім вирішуємо, чи йти по свіже. */
+    private fun loadAndSync() {
         viewModelScope.launch {
-            while (isActive) {
-                val now = LocalDateTime.now()
-                _state.update { it.copy(now = now) }
-                delay(millisUntilNextMinute(now))
+            scheduleRepository.loadCached()
+
+            val lastSyncedAt = preferencesRepository.preferences.first().lastSyncedAt
+            val isFresh = lastSyncedAt != null &&
+                Duration.between(lastSyncedAt, Instant.now()) < SYNC_INTERVAL
+            // Розклади міняються раз на місяці, тож ходити по мережу на кожен запуск нема сенсу.
+            if (!isFresh) sync(isManual = false)
+        }
+    }
+
+    private fun sync(isManual: Boolean) {
+        if (syncStatus.value == SyncStatus.IN_PROGRESS) return
+
+        viewModelScope.launch {
+            if (!networkMonitor.isOnline) {
+                // Про невдачу повідомляємо, лише якщо оновлення попросили руками: інакше це просто
+                // марно розбуджений радіомодуль і червоний напис нізащо.
+                if (isManual) syncStatus.value = SyncStatus.FAILED
+                return@launch
+            }
+
+            syncStatus.value = SyncStatus.IN_PROGRESS
+            when (scheduleRepository.refresh()) {
+                RefreshResult.Updated, RefreshResult.UpToDate -> {
+                    syncStatus.value = SyncStatus.IDLE
+                    preferencesRepository.saveLastSyncedAt(Instant.now())
+                }
+
+                RefreshResult.Failed -> syncStatus.value = SyncStatus.FAILED
             }
         }
     }
 
-    private fun millisUntilNextMinute(now: LocalDateTime): Long =
-        MINUTE_MILLIS - now.second * 1_000L - now.nano / 1_000_000
-
     private companion object {
-        const val MINUTE_MILLIS = 60_000L
+        const val UNSUBSCRIBE_DELAY_MILLIS = 5_000L
+        val SYNC_INTERVAL: Duration = Duration.ofHours(6)
     }
 }
+
+/** Скільки лишилося до наступної рівної хвилини. Винесено окремо, бо на межі доби легко схибити. */
+internal fun millisUntilNextMinute(now: LocalDateTime): Long =
+    60_000L - now.second * 1_000L - now.nano / 1_000_000
