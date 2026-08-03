@@ -3,4 +3,7 @@
     <!-- Launcher Icon -->
     <color name="ic_launcher_background">#FF10265E</color>
     <color name="ic_launcher_background_top">#FF2453C7</color>
+
+    <!-- Splash: перекривається темним варіантом у values-night -->
+    <color name="splash_background">#FFFEFBFF</color>
 </resources>

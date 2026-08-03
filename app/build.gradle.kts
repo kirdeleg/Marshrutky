@@ -25,6 +25,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Підписуємо ключем debug, щоб release ставився поверх звичайної збірки без
+            // видалення застосунку. Для Play знадобиться справжній ключ, локально — зайве.
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     compileOptions {
