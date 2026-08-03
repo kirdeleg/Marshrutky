@@ -78,11 +78,12 @@ class DepartureCalculatorTest {
 
     @Test
     fun `departures of one stop are merged across routes and sorted`() {
-        val departures = DepartureCalculator.departuresFrom(
+        val routeTimes = DepartureCalculator.routeTimesFrom(
             routes = listOf(throughRoute("Островерхівка", "06:20"), throughRoute("Соколово", "06:05")),
             stopName = "Мерефа (Селекційна)",
-            now = monday(6, 0)
+            dayType = DayType.WEEKDAY
         )
+        val departures = DepartureCalculator.departuresOf(routeTimes, monday(6, 0))
 
         assertEquals(listOf(LocalTime.of(6, 5), LocalTime.of(6, 20)), departures.map { it.departure.time })
         assertEquals(listOf("Соколово", "Островерхівка"), departures.map { it.route.name })
@@ -90,13 +91,13 @@ class DepartureCalculatorTest {
 
     @Test
     fun `a stop the route does not serve gives nothing`() {
-        val departures = DepartureCalculator.departuresFrom(
+        val routeTimes = DepartureCalculator.routeTimesFrom(
             routes = listOf(throughRoute("Островерхівка", "06:20")),
             stopName = "Мерефа (вул. Конституції)",
-            now = monday(6, 0)
+            dayType = DayType.WEEKDAY
         )
 
-        assertTrue(departures.isEmpty())
+        assertTrue(routeTimes.isEmpty())
     }
 
     @Test

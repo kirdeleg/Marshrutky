@@ -4,6 +4,7 @@ import com.kdelehoi.marshrutky.domain.model.BoardingStop
 import com.kdelehoi.marshrutky.domain.model.DayType
 import com.kdelehoi.marshrutky.domain.model.Departure
 import com.kdelehoi.marshrutky.domain.model.Route
+import com.kdelehoi.marshrutky.domain.model.RouteTime
 import com.kdelehoi.marshrutky.domain.model.StopDeparture
 import java.time.DayOfWeek
 import java.time.Duration
@@ -26,11 +27,11 @@ object DepartureCalculator {
         times.mapNotNull(::parseTime).distinct().sorted()
 
     /**
-     * Усі сьогоднішні рейси від зупинки. Ті, що вже поїхали, лишаються в списку з від'ємним
-     * відліком — на вкладці «Сьогодні» вони показані приглушено.
+     * Відлік до кожного з переданих рейсів. Розбір рядків і сортування сюди не входять, тому
+     * викликати щосекунди дешево — саме цю частину й перераховує годинник.
      */
-    fun departuresToday(stop: BoardingStop, now: LocalDateTime): List<Departure> =
-        timesOf(stop, dayTypeOf(now.toLocalDate())).map { time ->
+    fun departures(times: List<LocalTime>, now: LocalDateTime): List<Departure> =
+        times.map { time ->
             Departure(
                 time = time,
                 secondsUntil = Duration.between(now.toLocalTime(), time).seconds
@@ -38,19 +39,35 @@ object DepartureCalculator {
         }
 
     /**
-     * Усі сьогоднішні рейси від зупинки, зібрані по всіх маршрутах. Одна зупинка з однаковою
-     * назвою в різних файлах — це одне й те саме місце, тому списки зливаються в один.
+     * Усі сьогоднішні рейси від зупинки. Ті, що вже поїхали, лишаються в списку з від'ємним
+     * відліком — на вкладці «Сьогодні» вони показані приглушено.
      */
-    fun departuresFrom(routes: List<Route>, stopName: String, now: LocalDateTime): List<StopDeparture> =
+    fun departuresToday(stop: BoardingStop, now: LocalDateTime): List<Departure> =
+        departures(timesOf(stop, dayTypeOf(now.toLocalDate())), now)
+
+    /**
+     * Час відправлення від зупинки, зібраний по всіх маршрутах. Одна зупинка з однаковою назвою
+     * в різних файлах — це одне й те саме місце, тому списки зливаються в один.
+     */
+    fun routeTimesFrom(routes: List<Route>, stopName: String, dayType: DayType): List<RouteTime> =
         routes.flatMap { route ->
             route.directions.flatMap { direction ->
                 direction.boardingStops
                     .filter { it.name == stopName }
-                    .flatMap { stop ->
-                        departuresToday(stop, now).map { StopDeparture(route, it) }
-                    }
+                    .flatMap { stop -> timesOf(stop, dayType).map { RouteTime(route, it) } }
             }
-        }.sortedBy { it.departure.time }
+        }.sortedBy { it.time }
+
+    fun departuresOf(routeTimes: List<RouteTime>, now: LocalDateTime): List<StopDeparture> =
+        routeTimes.map { (route, time) ->
+            StopDeparture(
+                route = route,
+                departure = Departure(
+                    time = time,
+                    secondsUntil = Duration.between(now.toLocalTime(), time).seconds
+                )
+            )
+        }
 
     /** Назви всіх зупинок, від яких хоч колись хтось відправляється. */
     fun stopNames(routes: List<Route>): List<String> =

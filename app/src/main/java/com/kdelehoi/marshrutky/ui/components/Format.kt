@@ -7,6 +7,7 @@ import com.kdelehoi.marshrutky.R
 import com.kdelehoi.marshrutky.domain.model.DayType
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
+import kotlin.math.ceil
 
 private val TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm")
 
@@ -14,7 +15,9 @@ fun LocalTime.formatted(): String = format(TIME_FORMATTER)
 
 @Composable
 fun countdownText(secondsUntil: Long): String {
-    val minutes = (secondsUntil / 60).toInt()
+    // Округлення вгору, бо перемальовуємо раз на хвилину: о 09:35 рейс о 09:40 має лишатися
+    // «через 5 хвилин» усю хвилину. З округленням униз він став би «через 4» вже о 09:35:01.
+    val minutes = ceil(secondsUntil / 60.0).toInt()
     return when {
         minutes < 1 -> stringResource(R.string.departing_now)
         minutes < 60 -> pluralStringResource(R.plurals.in_minutes, minutes, minutes)

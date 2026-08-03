@@ -8,7 +8,6 @@ import com.kdelehoi.marshrutky.data.repository.ScheduleRepository
 import com.kdelehoi.marshrutky.domain.DepartureCalculator
 import com.kdelehoi.marshrutky.domain.model.DayType
 import com.kdelehoi.marshrutky.domain.model.Route
-import com.kdelehoi.marshrutky.domain.model.StopDeparture
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -40,19 +39,7 @@ data class ScheduleUiState(
     val today: DayType
         get() = DepartureCalculator.dayTypeOf(now.toLocalDate())
 
-    val stopNames: List<String>
-        get() = DepartureCalculator.stopNames(routes)
-
-    /** Зупинка могла зникнути з розкладів між запусками, тоді вибір скидається. */
-    val knownSelectedStop: String?
-        get() = selectedStop?.takeIf { it in stopNames }
-
     fun routeById(routeId: String): Route? = routes.firstOrNull { it.id == routeId }
-
-    fun departuresFromSelectedStop(): List<StopDeparture> {
-        val stop = knownSelectedStop ?: return emptyList()
-        return DepartureCalculator.departuresFrom(routes, stop, now)
-    }
 }
 
 class ScheduleViewModel(
@@ -138,16 +125,25 @@ class ScheduleViewModel(
         }
     }
 
+    /**
+     * Відлік показує хвилини, тож будимося рівно на межі хвилини, а не щосекунди: інакше
+     * застосунок 59 разів на хвилину перебудовує весь екран заради тієї самої цифри.
+     * Прокидання рахуємо щоразу від поточного часу, тому дрейф не накопичується.
+     */
     private fun startClock() {
         viewModelScope.launch {
             while (isActive) {
-                _state.update { it.copy(now = LocalDateTime.now()) }
-                delay(TICK_MILLIS)
+                val now = LocalDateTime.now()
+                _state.update { it.copy(now = now) }
+                delay(millisUntilNextMinute(now))
             }
         }
     }
 
+    private fun millisUntilNextMinute(now: LocalDateTime): Long =
+        MINUTE_MILLIS - now.second * 1_000L - now.nano / 1_000_000
+
     private companion object {
-        const val TICK_MILLIS = 1_000L
+        const val MINUTE_MILLIS = 60_000L
     }
 }
