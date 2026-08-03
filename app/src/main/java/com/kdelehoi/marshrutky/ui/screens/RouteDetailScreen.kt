@@ -37,6 +37,7 @@ import com.kdelehoi.marshrutky.domain.DepartureCalculator
 import com.kdelehoi.marshrutky.domain.model.BoardingStop
 import com.kdelehoi.marshrutky.domain.model.DayType
 import com.kdelehoi.marshrutky.ui.components.ScreenMessage
+import com.kdelehoi.marshrutky.ui.components.TabChangeHaptics
 import com.kdelehoi.marshrutky.ui.components.goToPage
 import com.kdelehoi.marshrutky.ui.components.TimeChip
 import com.kdelehoi.marshrutky.ui.components.TimeChipStyle
@@ -63,6 +64,8 @@ fun RouteDetailScreen(
     val isFavorite = routeId in state.favoriteRouteIds
     val pagerState = rememberPagerState(pageCount = { ScheduleTab.entries.size })
     val scope = rememberCoroutineScope()
+
+    TabChangeHaptics(pagerState)
 
     Scaffold(
         topBar = {

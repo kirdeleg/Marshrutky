@@ -1,6 +1,12 @@
 package com.kdelehoi.marshrutky.ui.components
 
 import androidx.compose.foundation.pager.PagerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import kotlinx.coroutines.flow.drop
 import kotlin.math.abs
 
 /**
@@ -13,4 +19,19 @@ suspend fun PagerState.goToPage(page: Int) {
         scrollToPage(if (page > currentPage) page - 1 else page + 1)
     }
     animateScrollToPage(page)
+}
+
+/**
+ * Короткий відгук на зміну вкладки. Слухаємо саме сторінку пейджера, а не натискання по назві,
+ * щоб гортання пальцем відчувалося так само, як тап, і щоб на тапі не вібрувати двічі. Перше
+ * значення пропускаємо — це просто відкриття екрана.
+ */
+@Composable
+fun TabChangeHaptics(pagerState: PagerState) {
+    val haptics = LocalHapticFeedback.current
+    LaunchedEffect(pagerState, haptics) {
+        snapshotFlow { pagerState.currentPage }
+            .drop(1)
+            .collect { haptics.performHapticFeedback(HapticFeedbackType.SegmentTick) }
+    }
 }
