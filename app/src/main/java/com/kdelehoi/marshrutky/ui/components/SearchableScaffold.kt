@@ -22,6 +22,7 @@ import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.res.stringResource
 import com.kdelehoi.marshrutky.R
 import kotlinx.coroutines.launch
@@ -42,8 +43,9 @@ fun SearchableScaffold(
     val scope = rememberCoroutineScope()
     val query = textFieldState.text.toString()
 
-    val inputField = @Composable {
+    val inputField = @Composable { fieldModifier: Modifier ->
         SearchBarDefaults.InputField(
+            modifier = fieldModifier,
             textFieldState = textFieldState,
             searchBarState = searchBarState,
             onSearch = { scope.launch { searchBarState.animateToCollapsed() } },
@@ -75,7 +77,16 @@ fun SearchableScaffold(
 
     Scaffold(
         modifier = modifier,
-        topBar = { AppBarWithSearch(state = searchBarState, inputField = inputField) }
+        topBar = {
+            AppBarWithSearch(
+                state = searchBarState,
+                // Згорнутий рядок — це кнопка, що відкриває пошук: розгортається він по кліку, а
+                // друкуємо ми вже в повноекранному оверлеї. Фокус йому не потрібен, і якщо його не
+                // забрати, після закриття пошуку фокус перестрибує сюди з оверлея, який зникає, —
+                // клавіатура встигає блимнути вдруге, перш ніж її сховають.
+                inputField = { inputField(Modifier.focusProperties { canFocus = false }) }
+            )
+        }
     ) { innerPadding ->
         Box(
             modifier = Modifier
@@ -86,7 +97,10 @@ fun SearchableScaffold(
         }
     }
 
-    ExpandedFullScreenSearchBar(state = searchBarState, inputField = inputField) {
+    ExpandedFullScreenSearchBar(
+        state = searchBarState,
+        inputField = { inputField(Modifier) }
+    ) {
         results(query)
     }
 }
