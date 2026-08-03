@@ -32,6 +32,7 @@ import com.kdelehoi.marshrutky.domain.model.StopDeparture
 import com.kdelehoi.marshrutky.ui.components.DropdownField
 import com.kdelehoi.marshrutky.ui.components.ScreenLoading
 import com.kdelehoi.marshrutky.ui.components.ScreenMessage
+import com.kdelehoi.marshrutky.ui.components.TabScreenInsets
 import com.kdelehoi.marshrutky.ui.components.countdownText
 import com.kdelehoi.marshrutky.ui.components.formatted
 import java.time.LocalDateTime
@@ -49,7 +50,7 @@ fun NearestScreen(
     onSelectStop: (String) -> Unit,
     onOpenRoute: (String) -> Unit
 ) {
-    Scaffold { innerPadding ->
+    Scaffold(contentWindowInsets = TabScreenInsets) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding)) {
             // Розбір розкладу не залежить від поточного моменту, тож тримаємо його в remember:
             // тік годинника й гортання вкладок мають коштувати лише перерахунку відліку.

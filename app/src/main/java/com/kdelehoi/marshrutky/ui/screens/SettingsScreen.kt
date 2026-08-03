@@ -21,6 +21,7 @@ import com.kdelehoi.marshrutky.R
 import com.kdelehoi.marshrutky.domain.model.AppLanguage
 import com.kdelehoi.marshrutky.domain.model.ThemeMode
 import com.kdelehoi.marshrutky.ui.components.DropdownField
+import com.kdelehoi.marshrutky.ui.components.TabScreenInsets
 import com.kdelehoi.marshrutky.viewmodel.AppearanceState
 import com.kdelehoi.marshrutky.viewmodel.SyncStatus
 import java.time.Instant
@@ -36,7 +37,7 @@ fun SettingsScreen(
     onSelectLanguage: (AppLanguage) -> Unit,
     onRefresh: () -> Unit
 ) {
-    Scaffold { innerPadding ->
+    Scaffold(contentWindowInsets = TabScreenInsets) { innerPadding ->
         Column(
             modifier = Modifier
                 .padding(innerPadding)

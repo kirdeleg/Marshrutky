@@ -77,6 +77,7 @@ fun SearchableScaffold(
 
     Scaffold(
         modifier = modifier,
+        contentWindowInsets = TabScreenInsets,
         topBar = {
             AppBarWithSearch(
                 state = searchBarState,

@@ -6,7 +6,6 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -148,12 +147,9 @@ private fun MainTabs(
     ) { innerPadding ->
         HorizontalPager(
             state = pagerState,
-            // Звичайний padding місце під панель вкладок займає, але системний відступ спожитим не
-            // позначає. Без consumeWindowInsets кожен внутрішній Scaffold резервує його вдруге, і
-            // над панеллю лишається смуга, у яку список не може доїхати.
-            modifier = Modifier
-                .padding(bottom = innerPadding.calculateBottomPadding())
-                .consumeWindowInsets(innerPadding)
+            // Місце під панель вкладок віднімаємо тут, а самі вкладки нижніх системних відступів
+            // не беруть — див. TabScreenInsets.
+            modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
         ) { page ->
             when (TopLevelDestination.entries[page]) {
                 TopLevelDestination.FAVORITES -> {
