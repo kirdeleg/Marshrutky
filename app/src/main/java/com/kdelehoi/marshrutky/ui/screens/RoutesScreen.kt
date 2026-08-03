@@ -19,7 +19,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconToggleButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -33,6 +32,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.kdelehoi.marshrutky.R
 import com.kdelehoi.marshrutky.domain.model.Route
+import com.kdelehoi.marshrutky.ui.components.ScreenLoading
 import com.kdelehoi.marshrutky.ui.components.ScreenMessage
 import com.kdelehoi.marshrutky.ui.components.SearchableScaffold
 import com.kdelehoi.marshrutky.viewmodel.ScheduleUiState
@@ -48,12 +48,7 @@ fun RoutesScreen(
         val visible = state.routes.filter { it.matches(query) }
 
         when {
-            state.isLoading -> Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                LoadingIndicator()
-            }
+            state.isLoading -> ScreenLoading()
 
             state.routes.isEmpty() -> ScreenMessage(
                 title = stringResource(R.string.routes_empty_title),

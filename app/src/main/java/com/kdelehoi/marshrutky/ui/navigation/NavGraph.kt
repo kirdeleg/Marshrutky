@@ -38,7 +38,9 @@ import com.kdelehoi.marshrutky.ui.screens.SettingsScreen
 import com.kdelehoi.marshrutky.viewmodel.ScheduleUiState
 import com.kdelehoi.marshrutky.viewmodel.ScheduleViewModel
 import com.kdelehoi.marshrutky.viewmodel.SettingsViewModel
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.time.LocalDateTime
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -67,6 +69,7 @@ fun MarshrutkyNavGraph(
             entry<Screen.Main> {
                 MainTabs(
                     state = state,
+                    clock = scheduleViewModel.now,
                     themeMode = themeMode,
                     onOpenRoute = { routeId -> backStack.add(Screen.RouteDetail(routeId)) },
                     onToggleFavorite = scheduleViewModel::toggleFavorite,
@@ -78,8 +81,11 @@ fun MarshrutkyNavGraph(
             }
 
             entry<Screen.RouteDetail> { destination ->
+                val now by scheduleViewModel.now.collectAsStateWithLifecycle()
+
                 RouteDetailScreen(
                     state = state,
+                    now = now,
                     routeId = destination.routeId,
                     onToggleFavorite = scheduleViewModel::toggleFavorite,
                     onBack = { backStack.removeLastOrNull() }
@@ -92,6 +98,12 @@ fun MarshrutkyNavGraph(
 @Composable
 private fun MainTabs(
     state: ScheduleUiState,
+    /**
+     * Годинник заходить сюди потоком, а не готовим значенням: якби час читався тут, щохвилинне
+     * оновлення перемальовувало б увесь каркас із панеллю вкладок. Кожна вкладка підписується
+     * сама, тож на «Маршрутах» і «Параметрах» годинник взагалі не працює.
+     */
+    clock: StateFlow<LocalDateTime>,
     themeMode: ThemeMode,
     onOpenRoute: (String) -> Unit,
     onToggleFavorite: (String) -> Unit,
@@ -134,17 +146,27 @@ private fun MainTabs(
             modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
         ) { page ->
             when (TopLevelDestination.entries[page]) {
-                TopLevelDestination.FAVORITES -> FavoritesScreen(
-                    state = state,
-                    onOpenRoute = onOpenRoute,
-                    onReorder = onReorderFavorites
-                )
+                TopLevelDestination.FAVORITES -> {
+                    val now by clock.collectAsStateWithLifecycle()
 
-                TopLevelDestination.NEAREST -> NearestScreen(
-                    state = state,
-                    onSelectStop = onSelectStop,
-                    onOpenRoute = onOpenRoute
-                )
+                    FavoritesScreen(
+                        state = state,
+                        now = now,
+                        onOpenRoute = onOpenRoute,
+                        onReorder = onReorderFavorites
+                    )
+                }
+
+                TopLevelDestination.NEAREST -> {
+                    val now by clock.collectAsStateWithLifecycle()
+
+                    NearestScreen(
+                        state = state,
+                        now = now,
+                        onSelectStop = onSelectStop,
+                        onOpenRoute = onOpenRoute
+                    )
+                }
 
                 TopLevelDestination.ROUTES -> RoutesScreen(
                     state = state,

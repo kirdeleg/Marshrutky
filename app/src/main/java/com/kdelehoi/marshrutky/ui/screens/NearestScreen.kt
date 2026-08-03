@@ -30,9 +30,11 @@ import com.kdelehoi.marshrutky.R
 import com.kdelehoi.marshrutky.domain.DepartureCalculator
 import com.kdelehoi.marshrutky.domain.model.StopDeparture
 import com.kdelehoi.marshrutky.ui.components.DropdownField
+import com.kdelehoi.marshrutky.ui.components.ScreenLoading
 import com.kdelehoi.marshrutky.ui.components.ScreenMessage
 import com.kdelehoi.marshrutky.ui.components.countdownText
 import com.kdelehoi.marshrutky.ui.components.formatted
+import java.time.LocalDateTime
 import com.kdelehoi.marshrutky.viewmodel.ScheduleUiState
 
 /**
@@ -43,6 +45,7 @@ import com.kdelehoi.marshrutky.viewmodel.ScheduleUiState
 @Composable
 fun NearestScreen(
     state: ScheduleUiState,
+    now: LocalDateTime,
     onSelectStop: (String) -> Unit,
     onOpenRoute: (String) -> Unit
 ) {
@@ -53,6 +56,11 @@ fun NearestScreen(
             val stopNames = remember(state.routes) { DepartureCalculator.stopNames(state.routes) }
             // Зупинка могла зникнути з розкладів між запусками, тоді вибір скидається.
             val selected = state.selectedStop?.takeIf { it in stopNames }
+
+            if (state.isLoading) {
+                ScreenLoading()
+                return@Column
+            }
 
             if (stopNames.isEmpty()) {
                 ScreenMessage(
@@ -79,10 +87,11 @@ fun NearestScreen(
                 return@Column
             }
 
-            val routeTimes = remember(state.routes, selected, state.today) {
-                DepartureCalculator.routeTimesFrom(state.routes, selected, state.today)
+            val today = DepartureCalculator.dayTypeOf(now.toLocalDate())
+            val routeTimes = remember(state.routes, selected, today) {
+                DepartureCalculator.routeTimesFrom(state.routes, selected, today)
             }
-            val upcoming = DepartureCalculator.departuresOf(routeTimes, state.now)
+            val upcoming = DepartureCalculator.departuresOf(routeTimes, now)
                 .filterNot { it.departure.hasLeft }
 
             when {

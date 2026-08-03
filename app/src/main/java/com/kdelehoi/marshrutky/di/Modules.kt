@@ -5,6 +5,7 @@ import com.kdelehoi.marshrutky.data.remote.NetworkMonitor
 import com.kdelehoi.marshrutky.data.remote.RoutesRemoteDataSource
 import com.kdelehoi.marshrutky.data.repository.PreferencesRepository
 import com.kdelehoi.marshrutky.data.repository.ScheduleRepository
+import com.kdelehoi.marshrutky.data.repository.createSettingsDataStore
 import com.kdelehoi.marshrutky.viewmodel.ScheduleViewModel
 import com.kdelehoi.marshrutky.viewmodel.SettingsViewModel
 import kotlinx.serialization.json.Json
@@ -19,7 +20,8 @@ val appModule = module {
     single { NetworkMonitor(androidContext()) }
     // Репозиторії живуть скільки процес — саме вони тримають дані між екранами.
     single { ScheduleRepository(get(), get(), get()) }
-    single { PreferencesRepository(androidContext()) }
+    single { createSettingsDataStore(androidContext()) }
+    single { PreferencesRepository(get()) }
     // ViewModel живе рівно скільки екран: інакше viewModelScope не скасовується ніколи, і все,
     // що в ньому запущено, працює у фоні без жодного глядача.
     viewModel { ScheduleViewModel(get(), get(), get()) }

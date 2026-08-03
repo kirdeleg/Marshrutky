@@ -56,6 +56,7 @@ private enum class ScheduleTab(val dayType: DayType?) {
 @Composable
 fun RouteDetailScreen(
     state: ScheduleUiState,
+    now: LocalDateTime,
     routeId: String,
     onToggleFavorite: (String) -> Unit,
     onBack: () -> Unit
@@ -147,7 +148,7 @@ fun RouteDetailScreen(
                             StopSection(
                                 stop = stop,
                                 dayType = tab.dayType,
-                                now = state.now
+                                now = now
                             )
                         }
                     }

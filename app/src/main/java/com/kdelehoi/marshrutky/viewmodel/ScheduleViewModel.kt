@@ -6,17 +6,15 @@ import com.kdelehoi.marshrutky.data.remote.NetworkMonitor
 import com.kdelehoi.marshrutky.data.repository.PreferencesRepository
 import com.kdelehoi.marshrutky.data.repository.RefreshResult
 import com.kdelehoi.marshrutky.data.repository.ScheduleRepository
-import com.kdelehoi.marshrutky.domain.DepartureCalculator
-import com.kdelehoi.marshrutky.domain.model.DayType
 import com.kdelehoi.marshrutky.domain.model.Route
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Duration
@@ -29,21 +27,25 @@ enum class SyncStatus {
     FAILED
 }
 
+/**
+ * Усе, крім поточного часу: він змінюється щохвилини й живе в окремому потоці. Якби він лежав тут,
+ * кожна хвилина оголошувала б застарілим увесь стан — і перемальовувалися б навіть «Параметри», де
+ * жодного часу немає.
+ */
 data class ScheduleUiState(
     val isLoading: Boolean = true,
     val routes: List<Route> = emptyList(),
     val favoriteRouteIds: List<String> = emptyList(),
-    val now: LocalDateTime = LocalDateTime.now(),
     val syncStatus: SyncStatus = SyncStatus.IDLE,
     val lastSyncedAt: Instant? = null,
     val selectedStop: String? = null
 ) {
     /** Саме в порядку, який задав користувач, а не в тому, у якому маршрути лежать у файлах. */
     val favoriteRoutes: List<Route>
-        get() = favoriteRouteIds.mapNotNull { id -> routes.firstOrNull { it.id == id } }
-
-    val today: DayType
-        get() = DepartureCalculator.dayTypeOf(now.toLocalDate())
+        get() {
+            val byId = routes.associateBy { it.id }
+            return favoriteRouteIds.mapNotNull(byId::get)
+        }
 
     fun routeById(routeId: String): Route? = routes.firstOrNull { it.id == routeId }
 }
@@ -57,34 +59,49 @@ class ScheduleViewModel(
     private val syncStatus = MutableStateFlow(SyncStatus.IDLE)
 
     /**
-     * Поточний час із точністю до хвилини. Холодний Flow, тож він працює рівно доти, доки на
-     * екран хтось дивиться: щойно застосунок згорнули, підписник відвалюється і годинник
-     * зупиняється сам. Прокидання рахуємо щоразу від поточного часу, тому дрейф не накопичується.
+     * Тримається до кінця першого підйому: читання кешу і, якщо треба, перше завантаження. Без
+     * цього прапорця між порожнім кешем і стартом синхронізації лишалося б вікно, у якому список
+     * порожній, а статус ще IDLE, — і на першому запуску встигало б блимнути «Маршрутів немає».
      */
-    private val minutes: Flow<LocalDateTime> = flow {
+    private val isStartingUp = MutableStateFlow(true)
+
+    /**
+     * Поточний час із точністю до хвилини. Окремий потік, а не поле стану: його читають лише ті
+     * екрани, де є час, тож на «Параметрах» чи «Маршрутах» годинник просто зупиняється. Холодний
+     * Flow під `WhileSubscribed` робить це властивістю конструкції, а не домовленістю: щойно
+     * застосунок згорнули, підписник відвалюється і тікати нема кому. Прокидання рахуємо щоразу
+     * від поточного часу, тому дрейф не накопичується.
+     */
+    val now: StateFlow<LocalDateTime> = flow {
         while (true) {
             val now = LocalDateTime.now()
             emit(now)
             delay(millisUntilNextMinute(now))
         }
-    }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(UNSUBSCRIBE_DELAY_MILLIS),
+        initialValue = LocalDateTime.now()
+    )
 
     /**
-     * `WhileSubscribed` — це те, що робить «нічого не робити у фоні» властивістю конструкції, а
-     * не домовленістю. Пауза перед зупинкою потрібна, щоб поворот екрана чи короткий перехід між
-     * екранами не перезапускали весь ланцюжок дарма.
+     * Пауза перед зупинкою потрібна, щоб поворот екрана чи короткий перехід між екранами не
+     * перезапускали весь ланцюжок дарма.
      */
     val state: StateFlow<ScheduleUiState> = combine(
         scheduleRepository.routes,
         preferencesRepository.preferences,
-        minutes,
-        syncStatus
-    ) { routes, preferences, now, sync ->
+        syncStatus,
+        isStartingUp
+    ) { routes, preferences, sync, startingUp ->
         ScheduleUiState(
-            isLoading = routes == null,
+            // Порожньо буває з двох різних причин: даних ще нема, бо ми їх лише дістаємо, або їх
+            // справді немає. Плутати ці випадки — це показати «Маршрутів немає» під час першого
+            // завантаження, тобто збрехати рівно тій людині, яка щойно поставила застосунок.
+            isLoading = routes == null ||
+                (routes.isEmpty() && (startingUp || sync == SyncStatus.IN_PROGRESS)),
             routes = routes.orEmpty(),
             favoriteRouteIds = preferences.favoriteRouteIds,
-            now = now,
             syncStatus = sync,
             lastSyncedAt = preferences.lastSyncedAt,
             selectedStop = preferences.selectedStop
@@ -112,41 +129,46 @@ class ScheduleViewModel(
     }
 
     /** Кнопка «Оновити зараз»: іде по мережу незалежно від того, коли синхронізувалися востаннє. */
-    fun refresh() = sync(isManual = true)
+    fun refresh() {
+        viewModelScope.launch { sync(isManual = true) }
+    }
 
     /** Спершу показуємо те, що вже є на пристрої, і аж потім вирішуємо, чи йти по свіже. */
     private fun loadAndSync() {
         viewModelScope.launch {
-            scheduleRepository.loadCached()
+            try {
+                scheduleRepository.loadCached()
 
-            val lastSyncedAt = preferencesRepository.preferences.first().lastSyncedAt
-            val isFresh = lastSyncedAt != null &&
-                Duration.between(lastSyncedAt, Instant.now()) < SYNC_INTERVAL
-            // Розклади міняються раз на місяці, тож ходити по мережу на кожен запуск нема сенсу.
-            if (!isFresh) sync(isManual = false)
+                val lastSyncedAt = preferencesRepository.preferences.first().lastSyncedAt
+                val isFresh = lastSyncedAt != null &&
+                    Duration.between(lastSyncedAt, Instant.now()) < SYNC_INTERVAL
+                // Розклади міняються раз на місяці, тож ходити по мережу на кожен запуск нема сенсу.
+                if (!isFresh) sync(isManual = false)
+            } finally {
+                isStartingUp.value = false
+            }
         }
     }
 
-    private fun sync(isManual: Boolean) {
-        if (syncStatus.value == SyncStatus.IN_PROGRESS) return
+    private suspend fun sync(isManual: Boolean) {
+        if (!networkMonitor.isOnline) {
+            // Про невдачу повідомляємо, лише якщо оновлення попросили руками: інакше це просто
+            // марно розбуджений радіомодуль і червоний напис нізащо.
+            if (isManual) syncStatus.value = SyncStatus.FAILED
+            return
+        }
 
-        viewModelScope.launch {
-            if (!networkMonitor.isOnline) {
-                // Про невдачу повідомляємо, лише якщо оновлення попросили руками: інакше це просто
-                // марно розбуджений радіомодуль і червоний напис нізащо.
-                if (isManual) syncStatus.value = SyncStatus.FAILED
-                return@launch
+        // Перевірити й зайняти статус треба одним рухом: два швидкі тапи по «Оновити зараз» —
+        // це два запуски, і роздільна перевірка пропустила б обидва.
+        if (syncStatus.getAndUpdate { SyncStatus.IN_PROGRESS } == SyncStatus.IN_PROGRESS) return
+
+        when (scheduleRepository.refresh()) {
+            RefreshResult.Updated, RefreshResult.UpToDate -> {
+                syncStatus.value = SyncStatus.IDLE
+                preferencesRepository.saveLastSyncedAt(Instant.now())
             }
 
-            syncStatus.value = SyncStatus.IN_PROGRESS
-            when (scheduleRepository.refresh()) {
-                RefreshResult.Updated, RefreshResult.UpToDate -> {
-                    syncStatus.value = SyncStatus.IDLE
-                    preferencesRepository.saveLastSyncedAt(Instant.now())
-                }
-
-                RefreshResult.Failed -> syncStatus.value = SyncStatus.FAILED
-            }
+            RefreshResult.Failed -> syncStatus.value = SyncStatus.FAILED
         }
     }
 
