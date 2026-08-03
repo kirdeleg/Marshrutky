@@ -15,6 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -64,7 +65,8 @@ fun FavoritesScreen(
                     FavoriteRouteCard(
                         route = route,
                         now = state.now,
-                        onClick = { onOpenRoute(route.id) }
+                        onClick = { onOpenRoute(route.id) },
+                        modifier = Modifier.animateItem()
                     )
                 }
             }
@@ -112,11 +114,15 @@ private fun ColumnScope.DirectionDepartures(
     direction: Direction,
     now: LocalDateTime
 ) {
-    val today = DepartureCalculator.departuresToday(direction.origin, now)
-    val upcoming = today.filterNot { it.hasLeft }.take(DEPARTURES_PER_DIRECTION)
+    val dayType = DepartureCalculator.dayTypeOf(now.toLocalDate())
+    // Розбір рядків розкладу від часу не залежить, тож тік годинника його не чіпає.
+    val times = remember(direction, dayType) { DepartureCalculator.timesOf(direction.origin, dayType) }
+    val upcoming = DepartureCalculator.departures(times, now)
+        .filterNot { it.hasLeft }
+        .take(DEPARTURES_PER_DIRECTION)
 
     when {
-        today.isEmpty() -> DirectionMessage(stringResource(R.string.direction_not_running_today))
+        times.isEmpty() -> DirectionMessage(stringResource(R.string.direction_not_running_today))
 
         upcoming.isEmpty() -> DirectionMessage(stringResource(R.string.direction_no_more_today))
 

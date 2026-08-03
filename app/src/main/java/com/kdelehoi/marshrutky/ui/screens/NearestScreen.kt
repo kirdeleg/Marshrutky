@@ -19,6 +19,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -26,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.kdelehoi.marshrutky.R
+import com.kdelehoi.marshrutky.domain.DepartureCalculator
 import com.kdelehoi.marshrutky.domain.model.StopDeparture
 import com.kdelehoi.marshrutky.ui.components.DropdownField
 import com.kdelehoi.marshrutky.ui.components.ScreenMessage
@@ -46,8 +48,11 @@ fun NearestScreen(
 ) {
     Scaffold { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding)) {
-            val stopNames = state.stopNames
-            val selected = state.knownSelectedStop
+            // Розбір розкладу не залежить від поточного моменту, тож тримаємо його в remember:
+            // тік годинника й гортання вкладок мають коштувати лише перерахунку відліку.
+            val stopNames = remember(state.routes) { DepartureCalculator.stopNames(state.routes) }
+            // Зупинка могла зникнути з розкладів між запусками, тоді вибір скидається.
+            val selected = state.selectedStop?.takeIf { it in stopNames }
 
             if (stopNames.isEmpty()) {
                 ScreenMessage(
@@ -74,11 +79,14 @@ fun NearestScreen(
                 return@Column
             }
 
-            val today = state.departuresFromSelectedStop()
-            val upcoming = today.filterNot { it.departure.hasLeft }
+            val routeTimes = remember(state.routes, selected, state.today) {
+                DepartureCalculator.routeTimesFrom(state.routes, selected, state.today)
+            }
+            val upcoming = DepartureCalculator.departuresOf(routeTimes, state.now)
+                .filterNot { it.departure.hasLeft }
 
             when {
-                today.isEmpty() -> ScreenMessage(
+                routeTimes.isEmpty() -> ScreenMessage(
                     title = stringResource(R.string.nearest_none_title),
                     subtitle = stringResource(R.string.nearest_none_subtitle)
                 )
@@ -93,11 +101,14 @@ fun NearestScreen(
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    itemsIndexed(upcoming) { index, item ->
+                    itemsIndexed(upcoming, key = { _, item -> item.key }) { index, item ->
                         DepartureRow(
                             item = item,
                             isNext = index == 0,
-                            onClick = { onOpenRoute(item.route.id) }
+                            onClick = { onOpenRoute(item.route.id) },
+                            // Коли маршрутка від'їжджає, її рядок зникає зі списку — без цього
+                            // решта стрибала б угору ривком.
+                            modifier = Modifier.animateItem()
                         )
                     }
                 }

@@ -75,7 +75,8 @@ fun RoutesScreen(
                         route = route,
                         isFavorite = route.id in state.favoriteRouteIds,
                         onClick = { onOpenRoute(route.id) },
-                        onToggleFavorite = { onToggleFavorite(route.id) }
+                        onToggleFavorite = { onToggleFavorite(route.id) },
+                        modifier = Modifier.animateItem()
                     )
                 }
             }

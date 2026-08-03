@@ -26,6 +26,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -36,6 +37,7 @@ import com.kdelehoi.marshrutky.domain.DepartureCalculator
 import com.kdelehoi.marshrutky.domain.model.BoardingStop
 import com.kdelehoi.marshrutky.domain.model.DayType
 import com.kdelehoi.marshrutky.ui.components.ScreenMessage
+import com.kdelehoi.marshrutky.ui.components.goToPage
 import com.kdelehoi.marshrutky.ui.components.TimeChip
 import com.kdelehoi.marshrutky.ui.components.TimeChipStyle
 import com.kdelehoi.marshrutky.viewmodel.ScheduleUiState
@@ -112,7 +114,7 @@ fun RouteDetailScreen(
                 ScheduleTab.entries.forEachIndexed { index, tab ->
                     Tab(
                         selected = index == pagerState.currentPage,
-                        onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
+                        onClick = { scope.launch { pagerState.goToPage(index) } },
                         text = { Text(stringResource(tabLabelRes(tab))) }
                     )
                 }
@@ -181,7 +183,9 @@ private fun TodayChips(
     stop: BoardingStop,
     now: LocalDateTime
 ) {
-    val departures = DepartureCalculator.departuresToday(stop, now)
+    val dayType = DepartureCalculator.dayTypeOf(now.toLocalDate())
+    val times = remember(stop, dayType) { DepartureCalculator.timesOf(stop, dayType) }
+    val departures = DepartureCalculator.departures(times, now)
     if (departures.isEmpty()) {
         SectionMessage(stringResource(R.string.direction_not_running_today))
         return
@@ -212,7 +216,7 @@ private fun DayChips(
     stop: BoardingStop,
     dayType: DayType
 ) {
-    val times = DepartureCalculator.timesOf(stop, dayType)
+    val times = remember(stop, dayType) { DepartureCalculator.timesOf(stop, dayType) }
     if (times.isEmpty()) {
         SectionMessage(stringResource(R.string.direction_not_running))
         return
