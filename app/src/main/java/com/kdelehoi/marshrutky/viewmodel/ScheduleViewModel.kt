@@ -6,11 +6,8 @@ import com.kdelehoi.marshrutky.data.remote.NetworkMonitor
 import com.kdelehoi.marshrutky.data.repository.PreferencesRepository
 import com.kdelehoi.marshrutky.data.repository.RefreshResult
 import com.kdelehoi.marshrutky.data.repository.ScheduleRepository
-import com.kdelehoi.marshrutky.domain.DepartureCalculator
-import com.kdelehoi.marshrutky.domain.model.DayType
 import com.kdelehoi.marshrutky.domain.model.Route
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -30,21 +27,25 @@ enum class SyncStatus {
     FAILED
 }
 
+/**
+ * Усе, крім поточного часу: він змінюється щохвилини й живе в окремому потоці. Якби він лежав тут,
+ * кожна хвилина оголошувала б застарілим увесь стан — і перемальовувалися б навіть «Параметри», де
+ * жодного часу немає.
+ */
 data class ScheduleUiState(
     val isLoading: Boolean = true,
     val routes: List<Route> = emptyList(),
     val favoriteRouteIds: List<String> = emptyList(),
-    val now: LocalDateTime = LocalDateTime.now(),
     val syncStatus: SyncStatus = SyncStatus.IDLE,
     val lastSyncedAt: Instant? = null,
     val selectedStop: String? = null
 ) {
     /** Саме в порядку, який задав користувач, а не в тому, у якому маршрути лежать у файлах. */
     val favoriteRoutes: List<Route>
-        get() = favoriteRouteIds.mapNotNull { id -> routes.firstOrNull { it.id == id } }
-
-    val today: DayType
-        get() = DepartureCalculator.dayTypeOf(now.toLocalDate())
+        get() {
+            val byId = routes.associateBy { it.id }
+            return favoriteRouteIds.mapNotNull(byId::get)
+        }
 
     fun routeById(routeId: String): Route? = routes.firstOrNull { it.id == routeId }
 }
@@ -65,30 +66,34 @@ class ScheduleViewModel(
     private val isStartingUp = MutableStateFlow(true)
 
     /**
-     * Поточний час із точністю до хвилини. Холодний Flow, тож він працює рівно доти, доки на
-     * екран хтось дивиться: щойно застосунок згорнули, підписник відвалюється і годинник
-     * зупиняється сам. Прокидання рахуємо щоразу від поточного часу, тому дрейф не накопичується.
+     * Поточний час із точністю до хвилини. Окремий потік, а не поле стану: його читають лише ті
+     * екрани, де є час, тож на «Параметрах» чи «Маршрутах» годинник просто зупиняється. Холодний
+     * Flow під `WhileSubscribed` робить це властивістю конструкції, а не домовленістю: щойно
+     * застосунок згорнули, підписник відвалюється і тікати нема кому. Прокидання рахуємо щоразу
+     * від поточного часу, тому дрейф не накопичується.
      */
-    private val minutes: Flow<LocalDateTime> = flow {
+    val now: StateFlow<LocalDateTime> = flow {
         while (true) {
             val now = LocalDateTime.now()
             emit(now)
             delay(millisUntilNextMinute(now))
         }
-    }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(UNSUBSCRIBE_DELAY_MILLIS),
+        initialValue = LocalDateTime.now()
+    )
 
     /**
-     * `WhileSubscribed` — це те, що робить «нічого не робити у фоні» властивістю конструкції, а
-     * не домовленістю. Пауза перед зупинкою потрібна, щоб поворот екрана чи короткий перехід між
-     * екранами не перезапускали весь ланцюжок дарма.
+     * Пауза перед зупинкою потрібна, щоб поворот екрана чи короткий перехід між екранами не
+     * перезапускали весь ланцюжок дарма.
      */
     val state: StateFlow<ScheduleUiState> = combine(
         scheduleRepository.routes,
         preferencesRepository.preferences,
-        minutes,
         syncStatus,
         isStartingUp
-    ) { routes, preferences, now, sync, startingUp ->
+    ) { routes, preferences, sync, startingUp ->
         ScheduleUiState(
             // Порожньо буває з двох різних причин: даних ще нема, бо ми їх лише дістаємо, або їх
             // справді немає. Плутати ці випадки — це показати «Маршрутів немає» під час першого
@@ -97,7 +102,6 @@ class ScheduleViewModel(
                 (routes.isEmpty() && (startingUp || sync == SyncStatus.IN_PROGRESS)),
             routes = routes.orEmpty(),
             favoriteRouteIds = preferences.favoriteRouteIds,
-            now = now,
             syncStatus = sync,
             lastSyncedAt = preferences.lastSyncedAt,
             selectedStop = preferences.selectedStop

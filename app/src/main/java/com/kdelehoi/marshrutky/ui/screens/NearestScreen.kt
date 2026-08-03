@@ -34,6 +34,7 @@ import com.kdelehoi.marshrutky.ui.components.ScreenLoading
 import com.kdelehoi.marshrutky.ui.components.ScreenMessage
 import com.kdelehoi.marshrutky.ui.components.countdownText
 import com.kdelehoi.marshrutky.ui.components.formatted
+import java.time.LocalDateTime
 import com.kdelehoi.marshrutky.viewmodel.ScheduleUiState
 
 /**
@@ -44,6 +45,7 @@ import com.kdelehoi.marshrutky.viewmodel.ScheduleUiState
 @Composable
 fun NearestScreen(
     state: ScheduleUiState,
+    now: LocalDateTime,
     onSelectStop: (String) -> Unit,
     onOpenRoute: (String) -> Unit
 ) {
@@ -85,10 +87,11 @@ fun NearestScreen(
                 return@Column
             }
 
-            val routeTimes = remember(state.routes, selected, state.today) {
-                DepartureCalculator.routeTimesFrom(state.routes, selected, state.today)
+            val today = DepartureCalculator.dayTypeOf(now.toLocalDate())
+            val routeTimes = remember(state.routes, selected, today) {
+                DepartureCalculator.routeTimesFrom(state.routes, selected, today)
             }
-            val upcoming = DepartureCalculator.departuresOf(routeTimes, state.now)
+            val upcoming = DepartureCalculator.departuresOf(routeTimes, now)
                 .filterNot { it.departure.hasLeft }
 
             when {

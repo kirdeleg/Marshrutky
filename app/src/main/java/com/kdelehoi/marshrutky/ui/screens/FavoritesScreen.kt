@@ -45,6 +45,7 @@ private val CARD_INSET = 20.dp
 @Composable
 fun FavoritesScreen(
     state: ScheduleUiState,
+    now: LocalDateTime,
     onOpenRoute: (String) -> Unit,
     onReorder: (List<String>) -> Unit
 ) {
@@ -95,7 +96,7 @@ fun FavoritesScreen(
                 itemsIndexed(visible, key = { _, route -> route.id }) { index, route ->
                     FavoriteRouteCard(
                         route = route,
-                        now = state.now,
+                        now = now,
                         onClick = { onOpenRoute(route.id) },
                         modifier = reorder
                             .itemModifier(index, animate = Modifier.animateItem())
