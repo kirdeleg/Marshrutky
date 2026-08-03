@@ -8,6 +8,7 @@ import com.kdelehoi.marshrutky.data.repository.ScheduleRepository
 import com.kdelehoi.marshrutky.domain.DepartureCalculator
 import com.kdelehoi.marshrutky.domain.model.DayType
 import com.kdelehoi.marshrutky.domain.model.Route
+import com.kdelehoi.marshrutky.domain.model.StopDeparture
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,7 +31,8 @@ data class ScheduleUiState(
     val favoriteRouteIds: Set<String> = emptySet(),
     val now: LocalDateTime = LocalDateTime.now(),
     val syncStatus: SyncStatus = SyncStatus.IDLE,
-    val lastSyncedAt: Instant? = null
+    val lastSyncedAt: Instant? = null,
+    val selectedStop: String? = null
 ) {
     val favoriteRoutes: List<Route>
         get() = routes.filter { it.id in favoriteRouteIds }
@@ -38,7 +40,19 @@ data class ScheduleUiState(
     val today: DayType
         get() = DepartureCalculator.dayTypeOf(now.toLocalDate())
 
+    val stopNames: List<String>
+        get() = DepartureCalculator.stopNames(routes)
+
+    /** Зупинка могла зникнути з розкладів між запусками, тоді вибір скидається. */
+    val knownSelectedStop: String?
+        get() = selectedStop?.takeIf { it in stopNames }
+
     fun routeById(routeId: String): Route? = routes.firstOrNull { it.id == routeId }
+
+    fun departuresFromSelectedStop(): List<StopDeparture> {
+        val stop = knownSelectedStop ?: return emptyList()
+        return DepartureCalculator.departuresFrom(routes, stop, now)
+    }
 }
 
 class ScheduleViewModel(
@@ -53,12 +67,19 @@ class ScheduleViewModel(
         loadRoutes()
         observeFavorites()
         observeLastSync()
+        observeSelectedStop()
         startClock()
     }
 
     fun toggleFavorite(routeId: String) {
         viewModelScope.launch {
             preferencesRepository.toggleFavorite(routeId)
+        }
+    }
+
+    fun selectStop(stopName: String) {
+        viewModelScope.launch {
+            preferencesRepository.saveSelectedStop(stopName)
         }
     }
 
@@ -105,6 +126,14 @@ class ScheduleViewModel(
         viewModelScope.launch {
             preferencesRepository.lastSyncedAt.collect { instant ->
                 _state.update { it.copy(lastSyncedAt = instant) }
+            }
+        }
+    }
+
+    private fun observeSelectedStop() {
+        viewModelScope.launch {
+            preferencesRepository.selectedStop.collect { stopName ->
+                _state.update { it.copy(selectedStop = stopName) }
             }
         }
     }

@@ -20,6 +20,7 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import com.kdelehoi.marshrutky.domain.model.ThemeMode
 import com.kdelehoi.marshrutky.ui.screens.FavoritesScreen
+import com.kdelehoi.marshrutky.ui.screens.NearestScreen
 import com.kdelehoi.marshrutky.ui.screens.RouteDetailScreen
 import com.kdelehoi.marshrutky.ui.screens.RoutesScreen
 import com.kdelehoi.marshrutky.ui.screens.SettingsScreen
@@ -48,6 +49,7 @@ fun MarshrutkyNavGraph(
                     onOpenRoute = { routeId -> backStack.add(Screen.RouteDetail(routeId)) },
                     onToggleFavorite = scheduleViewModel::toggleFavorite,
                     onSelectThemeMode = settingsViewModel::selectThemeMode,
+                    onSelectStop = scheduleViewModel::selectStop,
                     onRefresh = scheduleViewModel::refresh
                 )
             }
@@ -71,6 +73,7 @@ private fun MainTabs(
     onOpenRoute: (String) -> Unit,
     onToggleFavorite: (String) -> Unit,
     onSelectThemeMode: (ThemeMode) -> Unit,
+    onSelectStop: (String) -> Unit,
     onRefresh: () -> Unit
 ) {
     val pagerState = rememberPagerState(pageCount = { TopLevelDestination.entries.size })
@@ -99,6 +102,12 @@ private fun MainTabs(
             when (TopLevelDestination.entries[page]) {
                 TopLevelDestination.FAVORITES -> FavoritesScreen(
                     state = state,
+                    onOpenRoute = onOpenRoute
+                )
+
+                TopLevelDestination.NEAREST -> NearestScreen(
+                    state = state,
+                    onSelectStop = onSelectStop,
                     onOpenRoute = onOpenRoute
                 )
 

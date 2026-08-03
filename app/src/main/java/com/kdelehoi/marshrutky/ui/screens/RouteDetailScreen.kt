@@ -16,6 +16,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -32,8 +33,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.kdelehoi.marshrutky.R
 import com.kdelehoi.marshrutky.domain.DepartureCalculator
+import com.kdelehoi.marshrutky.domain.model.BoardingStop
 import com.kdelehoi.marshrutky.domain.model.DayType
-import com.kdelehoi.marshrutky.domain.model.Direction
 import com.kdelehoi.marshrutky.ui.components.ScreenMessage
 import com.kdelehoi.marshrutky.ui.components.TimeChip
 import com.kdelehoi.marshrutky.ui.components.TimeChipStyle
@@ -130,12 +131,20 @@ fun RouteDetailScreen(
                         .padding(horizontal = 16.dp, vertical = 20.dp),
                     verticalArrangement = Arrangement.spacedBy(28.dp)
                 ) {
-                    route.directions.forEach { direction ->
-                        DirectionSection(
-                            direction = direction,
-                            dayType = tab.dayType,
-                            now = state.now
-                        )
+                    route.directions.forEachIndexed { index, direction ->
+                        // Транзитний маршрут дає кілька секцій поспіль на один напрямок,
+                        // тож без риски між напрямками вони зливаються в суцільний стовпчик.
+                        if (index > 0) {
+                            HorizontalDivider()
+                        }
+
+                        direction.boardingStops.forEach { stop ->
+                            StopSection(
+                                stop = stop,
+                                dayType = tab.dayType,
+                                now = state.now
+                            )
+                        }
                     }
                 }
             }
@@ -144,8 +153,8 @@ fun RouteDetailScreen(
 }
 
 @Composable
-private fun DirectionSection(
-    direction: Direction,
+private fun StopSection(
+    stop: BoardingStop,
     dayType: DayType?,
     now: LocalDateTime
 ) {
@@ -154,25 +163,25 @@ private fun DirectionSection(
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Text(
-            text = direction.stop,
+            text = stop.name,
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.primary
         )
 
         if (dayType == null) {
-            TodayChips(direction = direction, now = now)
+            TodayChips(stop = stop, now = now)
         } else {
-            DayChips(direction = direction, dayType = dayType)
+            DayChips(stop = stop, dayType = dayType)
         }
     }
 }
 
 @Composable
 private fun TodayChips(
-    direction: Direction,
+    stop: BoardingStop,
     now: LocalDateTime
 ) {
-    val departures = DepartureCalculator.departuresToday(direction, now)
+    val departures = DepartureCalculator.departuresToday(stop, now)
     if (departures.isEmpty()) {
         SectionMessage(stringResource(R.string.direction_not_running_today))
         return
@@ -200,10 +209,10 @@ private fun TodayChips(
 
 @Composable
 private fun DayChips(
-    direction: Direction,
+    stop: BoardingStop,
     dayType: DayType
 ) {
-    val times = DepartureCalculator.timesOf(direction, dayType)
+    val times = DepartureCalculator.timesOf(stop, dayType)
     if (times.isEmpty()) {
         SectionMessage(stringResource(R.string.direction_not_running))
         return

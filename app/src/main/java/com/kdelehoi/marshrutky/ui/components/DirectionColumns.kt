@@ -19,6 +19,9 @@ import com.kdelehoi.marshrutky.domain.model.Direction
 
 /**
  * Два напрямки поруч: лівий стовпчик — перший напрямок з файлу маршруту, правий — другий.
+ * Проміжні зупинки транзитних маршрутів сюди не влізають, тож у заголовку стоїть початок
+ * напрямку, а весь список лишається на екрані маршруту й на вкладці «Найближчі».
+ *
  * Бічних відступів стовпчики не мають — їх задає той, хто викликає, щоб текст напрямків
  * стояв рівно під заголовком картки. Проміжок між колонками тримає роздільник.
  */
@@ -43,7 +46,7 @@ fun DirectionColumns(
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Text(
-                    text = direction.stop,
+                    text = direction.origin.name,
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.primary,
                     // Два рядки завжди: так час у сусідніх стовпчиках лишається на одній лінії.

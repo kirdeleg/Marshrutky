@@ -3,6 +3,7 @@
 
     <!-- Bottom navigation -->
     <string name="tab_favorites">Обране</string>
+    <string name="tab_nearest">Найближчі</string>
     <string name="tab_routes">Маршрути</string>
     <string name="tab_settings">Налаштування</string>
 
@@ -18,9 +19,17 @@
 
     <!-- Routes -->
     <string name="routes_empty_title">Маршрутів немає</string>
-    <string name="routes_empty_subtitle">Поклади файл розкладу в теку routes у репозиторії — маршрут з\'явиться тут після оновлення.</string>
+    <string name="routes_empty_subtitle">Розклади завантажуються з інтернету. Перевір зв\'язок і натисни «Оновити зараз» у Налаштуваннях.</string>
     <string name="favorite_add">Додати в обране</string>
     <string name="favorite_remove">Прибрати з обраного</string>
+
+    <!-- Nearest -->
+    <string name="nearest_stop_label">Зупинка</string>
+    <string name="nearest_no_stop_title">Вибери зупинку</string>
+    <string name="nearest_no_stop_subtitle">Покажу найближчі рейси всіх маршрутів, що від неї відправляються.</string>
+    <string name="nearest_none_title">Сьогодні звідси не курсують</string>
+    <string name="nearest_none_subtitle">Спробуй іншу зупинку — можливо, ці маршрути ходять лише в будні.</string>
+    <string name="nearest_no_more_subtitle">Наступні рейси будуть завтра.</string>
 
     <!-- Route detail -->
     <string name="tab_today">Сьогодні</string>

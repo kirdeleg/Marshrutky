@@ -3,6 +3,7 @@ package com.kdelehoi.marshrutky.ui.navigation
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DirectionsBus
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -24,6 +25,7 @@ enum class TopLevelDestination(
     @param:StringRes val labelRes: Int
 ) {
     FAVORITES(Icons.Default.Star, R.string.tab_favorites),
+    NEAREST(Icons.Default.Schedule, R.string.tab_nearest),
     ROUTES(Icons.Default.DirectionsBus, R.string.tab_routes),
     SETTINGS(Icons.Default.Settings, R.string.tab_settings)
 }

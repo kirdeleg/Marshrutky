@@ -2,7 +2,7 @@ package com.kdelehoi.marshrutky.domain.model
 
 import kotlinx.serialization.Serializable
 
-/** Вміст одного файлу з `assets/routes`. Ідентифікатор маршруту береться з імені файлу. */
+/** Вміст одного файлу з теки `routes` репозиторію. Ідентифікатор маршруту — це ім'я файлу. */
 @Serializable
 data class RouteFile(
     val number: String? = null,
@@ -32,13 +32,29 @@ data class Route(
 @Serializable
 data class Direction(
     val label: String,
-    val boardingStop: String? = null,
-    val schedule: WeekSchedule = WeekSchedule()
+    val stops: List<BoardingStop> = emptyList(),
+    // Ранній формат: одна точка посадки прямо в напрямку. Нові файли пишуть `stops`.
+    private val boardingStop: String? = null,
+    private val schedule: WeekSchedule = WeekSchedule()
 ) {
-    /** Заголовок напрямку — звідки їдемо. Підпис на кшталт «На Харків» лишається запасним варіантом. */
-    val stop: String
-        get() = boardingStop ?: label
+    /**
+     * Точки посадки в порядку руху. Транзитний маршрут перелічує їх усі, тож у Мерефі видно час
+     * машини, яка стартувала в Островерхівці. Файли старого формату дають список з однієї точки.
+     */
+    val boardingStops: List<BoardingStop>
+        get() = stops.ifEmpty { listOf(BoardingStop(boardingStop ?: label, schedule)) }
+
+    /** Початок напрямку — те, що показуємо там, де для всіх зупинок немає місця. */
+    val origin: BoardingStop
+        get() = boardingStops.first()
 }
+
+/** Зупинка з власним розкладом: та сама машина проходить її пізніше, ніж початковий пункт. */
+@Serializable
+data class BoardingStop(
+    val name: String,
+    val schedule: WeekSchedule = WeekSchedule()
+)
 
 @Serializable
 data class WeekSchedule(

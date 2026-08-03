@@ -32,6 +32,11 @@ class PreferencesRepository(private val context: Context) {
         preferences[LAST_SYNCED_AT_KEY]?.let(Instant::ofEpochSecond)
     }
 
+    /** Зупинка на вкладці «Найближчі». `null` — користувач ще нічого не вибирав. */
+    val selectedStop: Flow<String?> = context.dataStore.data.map { preferences ->
+        preferences[SELECTED_STOP_KEY]
+    }
+
     suspend fun toggleFavorite(routeId: String) {
         context.dataStore.edit { preferences ->
             val current = preferences[FAVORITES_KEY].orEmpty()
@@ -55,9 +60,16 @@ class PreferencesRepository(private val context: Context) {
         }
     }
 
+    suspend fun saveSelectedStop(stopName: String) {
+        context.dataStore.edit { preferences ->
+            preferences[SELECTED_STOP_KEY] = stopName
+        }
+    }
+
     private companion object {
         val FAVORITES_KEY = stringSetPreferencesKey("favorite_route_ids")
         val THEME_MODE_KEY = stringPreferencesKey("theme_mode")
         val LAST_SYNCED_AT_KEY = longPreferencesKey("last_synced_at")
+        val SELECTED_STOP_KEY = stringPreferencesKey("selected_stop")
     }
 }

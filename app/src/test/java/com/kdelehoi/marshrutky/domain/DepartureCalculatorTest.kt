@@ -1,7 +1,9 @@
 package com.kdelehoi.marshrutky.domain
 
+import com.kdelehoi.marshrutky.domain.model.BoardingStop
 import com.kdelehoi.marshrutky.domain.model.DayType
 import com.kdelehoi.marshrutky.domain.model.Direction
+import com.kdelehoi.marshrutky.domain.model.Route
 import com.kdelehoi.marshrutky.domain.model.WeekSchedule
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -13,8 +15,8 @@ import java.time.LocalTime
 class DepartureCalculatorTest {
 
     // Маршрут 199: у будні шість рейсів, на вихідних не курсує.
-    private val direction = Direction(
-        label = "На Харків",
+    private val stop = BoardingStop(
+        name = "Комарівка",
         schedule = WeekSchedule(
             weekday = listOf("05:50", "07:30", "09:30", "13:30", "15:40", "17:30")
         )
@@ -30,7 +32,7 @@ class DepartureCalculatorTest {
     @Test
     fun `departures of today keep the ones that already left`() {
         // Понеділок, 10:00 — перші три рейси вже поїхали.
-        val departures = DepartureCalculator.departuresToday(direction, monday(10, 0))
+        val departures = DepartureCalculator.departuresToday(stop, monday(10, 0))
 
         assertEquals(6, departures.size)
         assertEquals(listOf(true, true, true, false, false, false), departures.map { it.hasLeft })
@@ -38,7 +40,7 @@ class DepartureCalculatorTest {
 
     @Test
     fun `countdown is measured to the departure time`() {
-        val departures = DepartureCalculator.departuresToday(direction, monday(13, 0))
+        val departures = DepartureCalculator.departuresToday(stop, monday(13, 0))
 
         val next = departures.first { !it.hasLeft }
         assertEquals(LocalTime.of(13, 30), next.time)
@@ -47,7 +49,7 @@ class DepartureCalculatorTest {
 
     @Test
     fun `a departure happening right now has not left yet`() {
-        val departures = DepartureCalculator.departuresToday(direction, monday(9, 30))
+        val departures = DepartureCalculator.departuresToday(stop, monday(9, 30))
 
         val current = departures.first { it.time == LocalTime.of(9, 30) }
         assertEquals(0L, current.secondsUntil)
@@ -59,7 +61,7 @@ class DepartureCalculatorTest {
         // Субота — розклад порожній, тож і рейсів немає.
         val saturday = LocalDateTime.of(2026, 8, 1, 9, 0)
 
-        assertTrue(DepartureCalculator.departuresToday(direction, saturday).isEmpty())
+        assertTrue(DepartureCalculator.departuresToday(stop, saturday).isEmpty())
     }
 
     @Test
@@ -73,6 +75,64 @@ class DepartureCalculatorTest {
             parsed
         )
     }
+
+    @Test
+    fun `departures of one stop are merged across routes and sorted`() {
+        val departures = DepartureCalculator.departuresFrom(
+            routes = listOf(throughRoute("Островерхівка", "06:20"), throughRoute("Соколово", "06:05")),
+            stopName = "Мерефа (Селекційна)",
+            now = monday(6, 0)
+        )
+
+        assertEquals(listOf(LocalTime.of(6, 5), LocalTime.of(6, 20)), departures.map { it.departure.time })
+        assertEquals(listOf("Соколово", "Островерхівка"), departures.map { it.route.name })
+    }
+
+    @Test
+    fun `a stop the route does not serve gives nothing`() {
+        val departures = DepartureCalculator.departuresFrom(
+            routes = listOf(throughRoute("Островерхівка", "06:20")),
+            stopName = "Мерефа (вул. Конституції)",
+            now = monday(6, 0)
+        )
+
+        assertTrue(departures.isEmpty())
+    }
+
+    @Test
+    fun `stop names are collected from every direction without repeats`() {
+        val names = DepartureCalculator.stopNames(
+            listOf(throughRoute("Островерхівка", "06:20"), throughRoute("Соколово", "06:05"))
+        )
+
+        // Мерефа спільна для обох маршрутів, але в списку вибору має бути один раз.
+        assertEquals(
+            listOf("Мерефа (Селекційна)", "Островерхівка", "Соколово", "Харків (Холодна Гора)"),
+            names
+        )
+    }
+
+    /** Транзитний маршрут: стартує в селі, дорогою бере пасажирів у Мерефі. */
+    private fun throughRoute(origin: String, merefaTime: String) = Route(
+        id = origin,
+        number = null,
+        name = origin,
+        directions = listOf(
+            Direction(
+                label = "На Харків",
+                stops = listOf(
+                    BoardingStop(origin, WeekSchedule(weekday = listOf("05:50"))),
+                    BoardingStop("Мерефа (Селекційна)", WeekSchedule(weekday = listOf(merefaTime)))
+                )
+            ),
+            Direction(
+                label = "З Харкова",
+                stops = listOf(
+                    BoardingStop("Харків (Холодна Гора)", WeekSchedule(weekday = listOf("08:00")))
+                )
+            )
+        )
+    )
 
     private fun monday(hour: Int, minute: Int) = LocalDateTime.of(2026, 8, 3, hour, minute)
 }

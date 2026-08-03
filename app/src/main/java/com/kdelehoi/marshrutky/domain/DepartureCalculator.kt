@@ -1,8 +1,10 @@
 package com.kdelehoi.marshrutky.domain
 
+import com.kdelehoi.marshrutky.domain.model.BoardingStop
 import com.kdelehoi.marshrutky.domain.model.DayType
 import com.kdelehoi.marshrutky.domain.model.Departure
-import com.kdelehoi.marshrutky.domain.model.Direction
+import com.kdelehoi.marshrutky.domain.model.Route
+import com.kdelehoi.marshrutky.domain.model.StopDeparture
 import java.time.DayOfWeek
 import java.time.Duration
 import java.time.LocalDate
@@ -17,25 +19,48 @@ object DepartureCalculator {
         else -> DayType.WEEKDAY
     }
 
-    fun timesOf(direction: Direction, dayType: DayType): List<LocalTime> =
-        parseTimes(direction.schedule.timesFor(dayType))
+    fun timesOf(stop: BoardingStop, dayType: DayType): List<LocalTime> =
+        parseTimes(stop.schedule.timesFor(dayType))
 
     fun parseTimes(times: List<String>): List<LocalTime> =
         times.mapNotNull(::parseTime).distinct().sorted()
 
     /**
-     * Усі сьогоднішні рейси напрямку. Ті, що вже поїхали, лишаються в списку з від'ємним
+     * Усі сьогоднішні рейси від зупинки. Ті, що вже поїхали, лишаються в списку з від'ємним
      * відліком — на вкладці «Сьогодні» вони показані приглушено.
      */
-    fun departuresToday(direction: Direction, now: LocalDateTime): List<Departure> {
-        val times = timesOf(direction, dayTypeOf(now.toLocalDate()))
-        return times.map { time ->
+    fun departuresToday(stop: BoardingStop, now: LocalDateTime): List<Departure> =
+        timesOf(stop, dayTypeOf(now.toLocalDate())).map { time ->
             Departure(
                 time = time,
                 secondsUntil = Duration.between(now.toLocalTime(), time).seconds
             )
         }
-    }
+
+    /**
+     * Усі сьогоднішні рейси від зупинки, зібрані по всіх маршрутах. Одна зупинка з однаковою
+     * назвою в різних файлах — це одне й те саме місце, тому списки зливаються в один.
+     */
+    fun departuresFrom(routes: List<Route>, stopName: String, now: LocalDateTime): List<StopDeparture> =
+        routes.flatMap { route ->
+            route.directions.flatMap { direction ->
+                direction.boardingStops
+                    .filter { it.name == stopName }
+                    .flatMap { stop ->
+                        departuresToday(stop, now).map { StopDeparture(route, it) }
+                    }
+            }
+        }.sortedBy { it.departure.time }
+
+    /** Назви всіх зупинок, від яких хоч колись хтось відправляється. */
+    fun stopNames(routes: List<Route>): List<String> =
+        routes.asSequence()
+            .flatMap { it.directions }
+            .flatMap { it.boardingStops }
+            .map { it.name }
+            .distinct()
+            .sorted()
+            .toList()
 
     private fun parseTime(raw: String): LocalTime? {
         val parts = raw.trim().split(":", ".")

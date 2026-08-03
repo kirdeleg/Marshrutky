@@ -3,21 +3,37 @@
   "directions": [
     {
       "label": "На Харків",
-      "boardingStop": "Яковлівка",
-      "schedule": {
-        "weekday": ["05:30", "07:40"],
-        "saturday": [],
-        "sunday": []
-      }
+      "stops": [
+        {
+          "name": "Яковлівка",
+          "schedule": {
+            "weekday": ["05:30", "07:40"],
+            "saturday": [],
+            "sunday": []
+          }
+        },
+        {
+          "name": "Мерефа (Смачні історії)",
+          "schedule": {
+            "weekday": ["08:10"],
+            "saturday": [],
+            "sunday": []
+          }
+        }
+      ]
     },
     {
       "label": "З Харкова",
-      "boardingStop": "Харків (Холодна Гора)",
-      "schedule": {
-        "weekday": ["06:35", "09:10"],
-        "saturday": [],
-        "sunday": []
-      }
+      "stops": [
+        {
+          "name": "Харків (Холодна Гора)",
+          "schedule": {
+            "weekday": ["06:35", "09:10"],
+            "saturday": [],
+            "sunday": []
+          }
+        }
+      ]
     }
   ]
 }

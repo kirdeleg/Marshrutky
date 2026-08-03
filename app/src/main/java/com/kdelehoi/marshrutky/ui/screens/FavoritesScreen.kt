@@ -112,7 +112,7 @@ private fun ColumnScope.DirectionDepartures(
     direction: Direction,
     now: LocalDateTime
 ) {
-    val today = DepartureCalculator.departuresToday(direction, now)
+    val today = DepartureCalculator.departuresToday(direction.origin, now)
     val upcoming = today.filterNot { it.hasLeft }.take(DEPARTURES_PER_DIRECTION)
 
     when {

@@ -10,3 +10,9 @@ data class Departure(
     val hasLeft: Boolean
         get() = secondsUntil < 0
 }
+
+/** Рейс на вкладці «Найближчі»: час відправлення плюс маршрут, яким він поїде. */
+data class StopDeparture(
+    val route: Route,
+    val departure: Departure
+)
