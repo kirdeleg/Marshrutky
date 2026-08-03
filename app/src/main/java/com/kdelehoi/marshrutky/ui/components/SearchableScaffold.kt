@@ -16,16 +16,42 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBarDefaults
+import androidx.compose.material3.SearchBarState
 import androidx.compose.material3.SearchBarValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.res.stringResource
 import com.kdelehoi.marshrutky.R
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+
+/** Дії, доступні вмісту пошуку. */
+@OptIn(ExperimentalMaterial3Api::class)
+class SearchResultsScope internal constructor(
+    private val scope: CoroutineScope,
+    private val searchBarState: SearchBarState
+) {
+    /**
+     * Згортає пошук і лише після цього виконує [action].
+     *
+     * Розгорнутий пошук — це окреме вікно (Dialog), а його стан зберігається разом із вкладкою.
+     * Якщо піти з вкладки, не згорнувши пошук, то back-жест на наступному екрані оживить вкладку,
+     * щоб показати її знизу, — вікно пошуку створиться заново, забере фокус, і система скасує сам
+     * жест. Тому згортаємо саме [SearchBarState.snapTo] і саме до навігації: анімацію обірвало б
+     * зникнення композиції, прогрес застиг би на півдорозі, а це для пошуку все ще «розгорнуто».
+     */
+    fun exitSearchAnd(action: () -> Unit) {
+        scope.launch {
+            searchBarState.snapTo(0f)
+            action()
+        }
+    }
+}
 
 /**
  * Екран, у якого замість тулбара — пошуковий рядок Material 3 Expressive. У згорнутому стані
@@ -36,12 +62,15 @@ import kotlinx.coroutines.launch
 @Composable
 fun SearchableScaffold(
     modifier: Modifier = Modifier,
-    results: @Composable (query: String) -> Unit
+    results: @Composable SearchResultsScope.(query: String) -> Unit
 ) {
     val searchBarState = rememberSearchBarState()
     val textFieldState = rememberTextFieldState()
     val scope = rememberCoroutineScope()
     val query = textFieldState.text.toString()
+    val resultsScope = remember(scope, searchBarState) {
+        SearchResultsScope(scope, searchBarState)
+    }
 
     val inputField = @Composable { fieldModifier: Modifier ->
         SearchBarDefaults.InputField(
@@ -94,7 +123,7 @@ fun SearchableScaffold(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            results(query)
+            resultsScope.results(query)
         }
     }
 
@@ -102,6 +131,6 @@ fun SearchableScaffold(
         state = searchBarState,
         inputField = { inputField(Modifier) }
     ) {
-        results(query)
+        resultsScope.results(query)
     }
 }

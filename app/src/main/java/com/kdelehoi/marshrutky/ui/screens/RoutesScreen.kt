@@ -69,7 +69,7 @@ fun RoutesScreen(
                     RouteCard(
                         route = route,
                         isFavorite = route.id in state.favoriteRouteIds,
-                        onClick = { onOpenRoute(route.id) },
+                        onClick = { exitSearchAnd { onOpenRoute(route.id) } },
                         onToggleFavorite = { onToggleFavorite(route.id) },
                         modifier = Modifier.animateItem()
                     )

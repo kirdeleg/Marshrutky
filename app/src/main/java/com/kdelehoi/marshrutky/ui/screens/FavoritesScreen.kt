@@ -97,7 +97,7 @@ fun FavoritesScreen(
                     FavoriteRouteCard(
                         route = route,
                         now = now,
-                        onClick = { onOpenRoute(route.id) },
+                        onClick = { exitSearchAnd { onOpenRoute(route.id) } },
                         modifier = reorder
                             .itemModifier(index, animate = Modifier.animateItem())
                             .then(
