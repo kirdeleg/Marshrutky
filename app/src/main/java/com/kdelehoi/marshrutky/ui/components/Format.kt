@@ -11,7 +11,25 @@ import kotlin.math.ceil
 
 private val TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm")
 
+/** Нерозривний пробіл: місце, де рядок ламатися не має. */
+private const val NBSP = '\u00A0'
+
 fun LocalTime.formatted(): String = format(TIME_FORMATTER)
+
+/**
+ * Уточнення в дужках лишається цілим: «Харків (Холодна Гора)» переноситься перед дужкою, а не
+ * всередині неї, як робив би звичайний перенос по пробілах.
+ */
+fun String.wrapBeforeParentheses(): String = buildString {
+    var depth = 0
+    for (char in this@wrapBeforeParentheses) {
+        when (char) {
+            '(' -> depth++
+            ')' -> if (depth > 0) depth--
+        }
+        append(if (char == ' ' && depth > 0) NBSP else char)
+    }
+}
 
 @Composable
 fun countdownText(secondsUntil: Long): String {
