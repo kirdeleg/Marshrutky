@@ -27,6 +27,7 @@ import com.kdelehoi.marshrutky.domain.DepartureCalculator
 import com.kdelehoi.marshrutky.domain.model.Direction
 import com.kdelehoi.marshrutky.domain.model.Route
 import com.kdelehoi.marshrutky.ui.components.DirectionColumns
+import com.kdelehoi.marshrutky.ui.components.ScreenLoading
 import com.kdelehoi.marshrutky.ui.components.ScreenMessage
 import com.kdelehoi.marshrutky.ui.components.SearchableScaffold
 import com.kdelehoi.marshrutky.ui.components.rememberReorderState
@@ -72,6 +73,9 @@ fun FavoritesScreen(
         )
 
         when {
+            // Порада «познач зіркою на вкладці Маршрути» безглузда, поки тих маршрутів ще немає.
+            state.isLoading -> ScreenLoading()
+
             favorites.isEmpty() -> ScreenMessage(
                 title = stringResource(R.string.favorites_empty_title),
                 subtitle = stringResource(R.string.favorites_empty_subtitle)

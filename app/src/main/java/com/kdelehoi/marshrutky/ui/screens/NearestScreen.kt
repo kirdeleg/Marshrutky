@@ -30,6 +30,7 @@ import com.kdelehoi.marshrutky.R
 import com.kdelehoi.marshrutky.domain.DepartureCalculator
 import com.kdelehoi.marshrutky.domain.model.StopDeparture
 import com.kdelehoi.marshrutky.ui.components.DropdownField
+import com.kdelehoi.marshrutky.ui.components.ScreenLoading
 import com.kdelehoi.marshrutky.ui.components.ScreenMessage
 import com.kdelehoi.marshrutky.ui.components.countdownText
 import com.kdelehoi.marshrutky.ui.components.formatted
@@ -53,6 +54,11 @@ fun NearestScreen(
             val stopNames = remember(state.routes) { DepartureCalculator.stopNames(state.routes) }
             // Зупинка могла зникнути з розкладів між запусками, тоді вибір скидається.
             val selected = state.selectedStop?.takeIf { it in stopNames }
+
+            if (state.isLoading) {
+                ScreenLoading()
+                return@Column
+            }
 
             if (stopNames.isEmpty()) {
                 ScreenMessage(
