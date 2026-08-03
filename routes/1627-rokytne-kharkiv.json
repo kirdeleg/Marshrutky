@@ -4,6 +4,7 @@
   "directions": [
     {
       "label": "На Харків",
+      "destination": "Харків",
       "stops": [
         {
           "name": "Рокитне",
@@ -33,6 +34,7 @@
     },
     {
       "label": "З Харкова",
+      "destination": "Рокитне",
       "stops": [
         {
           "name": "Харків (Холодна Гора)",

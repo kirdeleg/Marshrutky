@@ -4,6 +4,7 @@
   "directions": [
     {
       "label": "На Харків",
+      "destination": "Харків",
       "stops": [
         {
           "name": "Утківка",
@@ -25,6 +26,7 @@
     },
     {
       "label": "З Харкова",
+      "destination": "Утківка",
       "stops": [
         {
           "name": "Харків (Холодна Гора)",

@@ -4,6 +4,7 @@
   "directions": [
     {
       "label": "На Мерефу",
+      "destination": "Мерефа",
       "stops": [
         {
           "name": "Буди",
@@ -17,6 +18,7 @@
     },
     {
       "label": "З Мерефи",
+      "destination": "Буди",
       "stops": [
         {
           "name": "Мерефа",
