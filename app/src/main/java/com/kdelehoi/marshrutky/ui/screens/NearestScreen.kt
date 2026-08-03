@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -30,6 +31,8 @@ import com.kdelehoi.marshrutky.R
 import com.kdelehoi.marshrutky.domain.DepartureCalculator
 import com.kdelehoi.marshrutky.domain.model.StopDeparture
 import com.kdelehoi.marshrutky.ui.components.DropdownField
+import com.kdelehoi.marshrutky.ui.components.ROUTE_BADGE_SIZE_SMALL
+import com.kdelehoi.marshrutky.ui.components.RouteNumberBadge
 import com.kdelehoi.marshrutky.ui.components.ScreenLoading
 import com.kdelehoi.marshrutky.ui.components.ScreenMessage
 import com.kdelehoi.marshrutky.ui.components.TabScreenInsets
@@ -147,38 +150,25 @@ private fun DepartureRow(
         )
     ) {
         Row(
-            modifier = Modifier.padding(start = 14.dp, end = 20.dp, top = 12.dp, bottom = 12.dp),
+            modifier = Modifier.padding(start = 12.dp, end = 16.dp, top = 10.dp, bottom = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Час живе у власній плашці, як номер маршруту — в дев'ятикутнику на екрані
-            // Маршрутів. Ширина стала, тож назви стоять по одній лінії в усіх рядках.
-            Surface(
-                shape = CircleShape,
-                color = if (isNext) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.secondaryContainer
-                },
-                contentColor = if (isNext) {
-                    MaterialTheme.colorScheme.onPrimary
-                } else {
-                    MaterialTheme.colorScheme.onSecondaryContainer
-                },
-                modifier = Modifier.size(width = TIME_PILL_WIDTH, height = TIME_PILL_HEIGHT)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        text = item.departure.time.formatted(),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+            // Маршрути без номера місце під значок усе одно займають, інакше кінцеві в сусідніх
+            // рядках роз'їхалися б по різних вертикалях.
+            if (item.route.number != null) {
+                RouteNumberBadge(
+                    number = item.route.number,
+                    size = ROUTE_BADGE_SIZE_SMALL,
+                    style = MaterialTheme.typography.labelMedium
+                )
+            } else {
+                Spacer(modifier = Modifier.size(ROUTE_BADGE_SIZE_SMALL))
             }
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = item.route.title,
+                    text = item.destination,
                     style = MaterialTheme.typography.bodyLarge,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
@@ -193,9 +183,41 @@ private fun DepartureRow(
                     }
                 )
             }
+
+            // Час — головне в рядку, тож він найбільший. У найближчого рейсу він ще й залитий:
+            // разом із фоном картки це позначка «оце наступний». Ширина стала в обох станах, щоб
+            // права кромка часу лишалася рівною.
+            Box(
+                modifier = Modifier.size(width = TIME_WIDTH, height = TIME_HEIGHT),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isNext) {
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            TimeText(item.departure.time.formatted())
+                        }
+                    }
+                } else {
+                    TimeText(item.departure.time.formatted())
+                }
+            }
         }
     }
 }
 
-private val TIME_PILL_WIDTH = 92.dp
-private val TIME_PILL_HEIGHT = 52.dp
+@Composable
+private fun TimeText(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.Bold
+    )
+}
+
+private val TIME_WIDTH = 80.dp
+private val TIME_HEIGHT = 44.dp

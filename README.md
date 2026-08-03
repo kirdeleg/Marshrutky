@@ -49,6 +49,7 @@ A route that stops at several places along the way lists each of them with its o
   "directions": [
     {
       "label": "На Харків",
+      "destination": "Харків",
       "stops": [
         {
           "name": "Островерхівка",
@@ -74,10 +75,11 @@ A route that stops at several places along the way lists each of them with its o
 
 | Field | Required | Notes |
 | --- | --- | --- |
-| `number` | no | Shown in brackets after the name. Suburban routes are often unnumbered. |
+| `number` | no | Shown in a badge next to the name. Suburban routes are often unnumbered. |
 | `name` | yes | Endpoints, e.g. `Островерхівка — Харків`. |
 | `directions` | no | Usually two: there and back. |
 | `directions[].label` | yes | Never displayed; kept only as a fallback stop name for old files. |
+| `directions[].destination` | no² | Where this direction ends. The Nearest tab shows it instead of the route name, because at a stop the name says nothing about which way the bus is going. |
 | `directions[].stops` | yes¹ | Boarding points in travel order, each with its own times. |
 | `stops[].name` | yes | Stops with the same name in different files are treated as one place, which is what makes the Nearest tab work. |
 | `stops[].schedule` | yes | Three lists: `weekday`, `saturday`, `sunday`. An empty list means the route does not run that day. |
@@ -88,6 +90,11 @@ other routes.
 
 ¹ Files written before multi-stop support are still read: a direction may carry a single
 `boardingStop` string and a `schedule` object directly, instead of a `stops` list.
+
+² It cannot be derived from the other fields, which is why it is stored: the terminus is not a
+boarding point, and the settlement in the name may differ from the one in the stop — route 1624 is
+`Зелений Гай — Харків` but departs from `Високий (Зелений Гай)`. Omitting it is safe: the Nearest tab
+then falls back to the route name.
 
 ## Adding or fixing a route
 

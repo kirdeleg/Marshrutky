@@ -87,6 +87,30 @@ class DepartureCalculatorTest {
 
         assertEquals(listOf(LocalTime.of(6, 5), LocalTime.of(6, 20)), departures.map { it.departure.time })
         assertEquals(listOf("Соколове", "Островерхівка"), departures.map { it.route.name })
+        assertEquals(listOf("Харків", "Харків"), departures.map { it.destination })
+    }
+
+    @Test
+    fun `direction without a destination falls back to the route name`() {
+        val route = Route(
+            id = "Комарівка",
+            number = null,
+            name = "Комарівка — Харків",
+            directions = listOf(
+                Direction(
+                    label = "На Харків",
+                    stops = listOf(BoardingStop("Комарівка", WeekSchedule(weekday = listOf("06:00"))))
+                )
+            )
+        )
+
+        val routeTimes = DepartureCalculator.routeTimesFrom(
+            routes = listOf(route),
+            stopName = "Комарівка",
+            dayType = DayType.WEEKDAY
+        )
+
+        assertEquals(listOf("Комарівка — Харків"), routeTimes.map { it.destination })
     }
 
     @Test
@@ -121,6 +145,7 @@ class DepartureCalculatorTest {
         directions = listOf(
             Direction(
                 label = "На Харків",
+                destination = "Харків",
                 stops = listOf(
                     BoardingStop(origin, WeekSchedule(weekday = listOf("05:50"))),
                     BoardingStop("Мерефа (Селекційна)", WeekSchedule(weekday = listOf(merefaTime)))
@@ -128,6 +153,7 @@ class DepartureCalculatorTest {
             ),
             Direction(
                 label = "З Харкова",
+                destination = origin,
                 stops = listOf(
                     BoardingStop("Харків (Холодна Гора)", WeekSchedule(weekday = listOf("08:00")))
                 )

@@ -32,6 +32,12 @@ data class Route(
 @Serializable
 data class Direction(
     val label: String,
+    /**
+     * Кінцева зупинка напрямку. Її немає серед [stops], бо там лише місця посадки, а виводити її
+     * з назви маршруту не виходить: «Зелений Гай — Харків» вирушає з «Високий (Зелений Гай)», тож
+     * населений пункт у назві й у зупинці різні.
+     */
+    val destination: String? = null,
     val stops: List<BoardingStop> = emptyList(),
     // Ранній формат: одна точка посадки прямо в напрямку. Нові файли пишуть `stops`.
     private val boardingStop: String? = null,

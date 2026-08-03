@@ -17,15 +17,21 @@ data class Departure(
  */
 data class RouteTime(
     val route: Route,
+    /** Куди їде саме цей рейс: назва маршруту від зупинки не каже, у який бік він рушить. */
+    val destination: String,
     val time: LocalTime
 )
 
 /** Рейс на вкладці «Найближчі»: час відправлення плюс маршрут, яким він поїде. */
 data class StopDeparture(
     val route: Route,
+    val destination: String,
     val departure: Departure
 ) {
-    /** Час у добі унікальний разом з маршрутом: об 19:10 від Холодної Гори їде і Соколове, і Островерхівка. */
+    /**
+     * Час у добі унікальний разом з маршрутом і напрямком: об 19:10 від Холодної Гори їде і
+     * Соколове, і Островерхівка, а транзитний маршрут може проходити ту саму зупинку в обидва боки.
+     */
     val key: String
-        get() = "${route.id}@${departure.time}"
+        get() = "${route.id}@$destination@${departure.time}"
 }

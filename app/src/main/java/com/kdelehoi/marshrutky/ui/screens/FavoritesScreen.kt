@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -19,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -27,6 +29,7 @@ import com.kdelehoi.marshrutky.domain.DepartureCalculator
 import com.kdelehoi.marshrutky.domain.model.Direction
 import com.kdelehoi.marshrutky.domain.model.Route
 import com.kdelehoi.marshrutky.ui.components.DirectionColumns
+import com.kdelehoi.marshrutky.ui.components.RouteNumberBadge
 import com.kdelehoi.marshrutky.ui.components.ScreenLoading
 import com.kdelehoi.marshrutky.ui.components.ScreenMessage
 import com.kdelehoi.marshrutky.ui.components.SearchableScaffold
@@ -133,16 +136,25 @@ private fun FavoriteRouteCard(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         )
     ) {
-        Text(
-            text = route.title,
-            style = MaterialTheme.typography.titleLarge,
+        // Номер живе у дев'ятикутнику, як на «Маршрутах», тому назва тут без нього. Значок стоїть
+        // на тій самій лівій лінії, що й стовпчики напрямків нижче.
+        Row(
             modifier = Modifier.padding(
                 start = CARD_INSET,
                 end = CARD_INSET,
-                top = 18.dp,
+                top = 16.dp,
                 bottom = 14.dp
+            ),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            route.number?.let { RouteNumberBadge(it) }
+
+            Text(
+                text = route.name,
+                style = MaterialTheme.typography.titleLarge
             )
-        )
+        }
 
         DirectionColumns(
             directions = route.directions,
