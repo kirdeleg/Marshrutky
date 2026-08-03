@@ -20,7 +20,10 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // R8 викидає невживаний код і скорочує імена, а слідом за ним shrinkResources —
+            // ресурси, на які вже ніхто не посилається. Це і менший APK, і швидший старт.
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
