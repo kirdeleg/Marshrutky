@@ -79,14 +79,14 @@ class DepartureCalculatorTest {
     @Test
     fun `departures of one stop are merged across routes and sorted`() {
         val routeTimes = DepartureCalculator.routeTimesFrom(
-            routes = listOf(throughRoute("Островерхівка", "06:20"), throughRoute("Соколово", "06:05")),
+            routes = listOf(throughRoute("Островерхівка", "06:20"), throughRoute("Соколове", "06:05")),
             stopName = "Мерефа (Селекційна)",
             dayType = DayType.WEEKDAY
         )
         val departures = DepartureCalculator.departuresOf(routeTimes, monday(6, 0))
 
         assertEquals(listOf(LocalTime.of(6, 5), LocalTime.of(6, 20)), departures.map { it.departure.time })
-        assertEquals(listOf("Соколово", "Островерхівка"), departures.map { it.route.name })
+        assertEquals(listOf("Соколове", "Островерхівка"), departures.map { it.route.name })
     }
 
     @Test
@@ -103,12 +103,12 @@ class DepartureCalculatorTest {
     @Test
     fun `stop names are collected from every direction without repeats`() {
         val names = DepartureCalculator.stopNames(
-            listOf(throughRoute("Островерхівка", "06:20"), throughRoute("Соколово", "06:05"))
+            listOf(throughRoute("Островерхівка", "06:20"), throughRoute("Соколове", "06:05"))
         )
 
         // Мерефа спільна для обох маршрутів, але в списку вибору має бути один раз.
         assertEquals(
-            listOf("Мерефа (Селекційна)", "Островерхівка", "Соколово", "Харків (Холодна Гора)"),
+            listOf("Мерефа (Селекційна)", "Островерхівка", "Соколове", "Харків (Холодна Гора)"),
             names
         )
     }
