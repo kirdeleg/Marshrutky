@@ -27,6 +27,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
+import com.kdelehoi.marshrutky.domain.model.AppLanguage
 import com.kdelehoi.marshrutky.domain.model.ThemeMode
 import com.kdelehoi.marshrutky.ui.components.TabChangeHaptics
 import com.kdelehoi.marshrutky.ui.components.goToPage
@@ -35,6 +36,7 @@ import com.kdelehoi.marshrutky.ui.screens.NearestScreen
 import com.kdelehoi.marshrutky.ui.screens.RouteDetailScreen
 import com.kdelehoi.marshrutky.ui.screens.RoutesScreen
 import com.kdelehoi.marshrutky.ui.screens.SettingsScreen
+import com.kdelehoi.marshrutky.viewmodel.AppearanceState
 import com.kdelehoi.marshrutky.viewmodel.ScheduleUiState
 import com.kdelehoi.marshrutky.viewmodel.ScheduleViewModel
 import com.kdelehoi.marshrutky.viewmodel.SettingsViewModel
@@ -50,7 +52,7 @@ fun MarshrutkyNavGraph(
 ) {
     val backStack = rememberNavBackStack(Screen.Main)
     val state by scheduleViewModel.state.collectAsStateWithLifecycle()
-    val themeMode by settingsViewModel.themeMode.collectAsStateWithLifecycle()
+    val appearance by settingsViewModel.appearance.collectAsStateWithLifecycle()
 
     // Типовий перехід NavDisplay — згасання, однакове в обидва боки, тож по анімації не видно,
     // заходиш ти вглиб чи повертаєшся. Пружина з motionScheme дає той самий рух, що й решта теми.
@@ -70,11 +72,12 @@ fun MarshrutkyNavGraph(
                 MainTabs(
                     state = state,
                     clock = scheduleViewModel.now,
-                    themeMode = themeMode,
+                    appearance = appearance,
                     onOpenRoute = { routeId -> backStack.add(Screen.RouteDetail(routeId)) },
                     onToggleFavorite = scheduleViewModel::toggleFavorite,
                     onReorderFavorites = scheduleViewModel::saveFavoriteOrder,
                     onSelectThemeMode = settingsViewModel::selectThemeMode,
+                    onSelectLanguage = settingsViewModel::selectLanguage,
                     onSelectStop = scheduleViewModel::selectStop,
                     onRefresh = scheduleViewModel::refresh
                 )
@@ -104,11 +107,12 @@ private fun MainTabs(
      * сама, тож на «Маршрутах» і «Параметрах» годинник взагалі не працює.
      */
     clock: StateFlow<LocalDateTime>,
-    themeMode: ThemeMode,
+    appearance: AppearanceState,
     onOpenRoute: (String) -> Unit,
     onToggleFavorite: (String) -> Unit,
     onReorderFavorites: (List<String>) -> Unit,
     onSelectThemeMode: (ThemeMode) -> Unit,
+    onSelectLanguage: (AppLanguage) -> Unit,
     onSelectStop: (String) -> Unit,
     onRefresh: () -> Unit
 ) {
@@ -175,10 +179,11 @@ private fun MainTabs(
                 )
 
                 TopLevelDestination.SETTINGS -> SettingsScreen(
-                    themeMode = themeMode,
+                    appearance = appearance,
                     syncStatus = state.syncStatus,
                     lastSyncedAt = state.lastSyncedAt,
                     onSelectThemeMode = onSelectThemeMode,
+                    onSelectLanguage = onSelectLanguage,
                     onRefresh = onRefresh
                 )
             }

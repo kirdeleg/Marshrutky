@@ -1,0 +1,77 @@
+<resources>
+    <string name="app_name">Маршрутки</string>
+
+    <!-- Bottom navigation -->
+    <string name="tab_favorites">Избранное</string>
+    <string name="tab_nearest">Ближайшие</string>
+    <string name="tab_routes">Маршруты</string>
+    <string name="tab_settings">Параметры</string>
+
+    <!-- Search -->
+    <string name="search_placeholder">Номер или название маршрута</string>
+    <string name="search_clear">Очистить</string>
+    <string name="nothing_found_title">Ничего не найдено</string>
+    <string name="nothing_found_subtitle">Попробуй другой номер или часть названия.</string>
+
+    <!-- Favorites -->
+    <string name="favorites_empty_title">Избранное пусто</string>
+    <string name="favorites_empty_subtitle">Открой вкладку «Маршруты» и отметь звёздочкой те, которыми ездишь чаще всего.</string>
+
+    <!-- Routes -->
+    <string name="routes_empty_title">Маршрутов нет</string>
+    <string name="routes_empty_subtitle">Расписания загружаются из интернета. Проверь связь и нажми «Обновить сейчас» в Параметрах.</string>
+    <string name="favorite_add">Добавить в избранное</string>
+    <string name="favorite_remove">Убрать из избранного</string>
+
+    <!-- Nearest -->
+    <string name="nearest_stop_label">Остановка</string>
+    <string name="nearest_no_stop_title">Выбери остановку</string>
+    <string name="nearest_no_stop_subtitle">Покажу ближайшие рейсы всех маршрутов, которые от неё отправляются.</string>
+    <string name="nearest_none_title">Сегодня отсюда не ходят</string>
+    <string name="nearest_none_subtitle">Попробуй другую остановку — возможно, эти маршруты ходят только по будням.</string>
+    <string name="nearest_no_more_subtitle">Следующие рейсы будут завтра.</string>
+
+    <!-- Route detail -->
+    <string name="tab_today">Сегодня</string>
+    <string name="day_weekday">Будни</string>
+    <string name="day_saturday">Суббота</string>
+    <string name="day_sunday">Воскресенье</string>
+    <string name="direction_no_more_today">Сегодня рейсов больше нет</string>
+    <string name="direction_not_running_today">Сегодня не ходит</string>
+    <string name="direction_not_running">Не ходит</string>
+    <string name="route_missing_title">Маршрут не найден</string>
+    <string name="route_missing_subtitle">Похоже, его файл убрали из репозитория.</string>
+
+    <!-- Settings -->
+    <string name="settings_theme">Тема</string>
+    <string name="theme_system">Как в системе</string>
+    <string name="theme_light">Светлая</string>
+    <string name="theme_dark">Тёмная</string>
+    <string name="settings_language">Язык</string>
+    <string name="language_system">Как в системе</string>
+    <string name="settings_data_title">Расписания</string>
+    <string name="settings_data_never">Ещё не загружались из сети</string>
+    <string name="settings_data_synced">Обновлено %1$s</string>
+    <string name="settings_data_syncing">Проверяю обновления…</string>
+    <string name="settings_data_failed">Не удалось обновить, показываю сохранённое</string>
+    <string name="settings_refresh">Обновить сейчас</string>
+
+    <!-- Countdown -->
+    <string name="departing_now">Отправляется</string>
+    <string name="in_hours_minutes">через %1$d ч %2$d мин</string>
+    <plurals name="in_minutes">
+        <item quantity="one">через %1$d минуту</item>
+        <item quantity="few">через %1$d минуты</item>
+        <item quantity="many">через %1$d минут</item>
+        <item quantity="other">через %1$d минуты</item>
+    </plurals>
+    <plurals name="in_hours">
+        <item quantity="one">через %1$d час</item>
+        <item quantity="few">через %1$d часа</item>
+        <item quantity="many">через %1$d часов</item>
+        <item quantity="other">через %1$d часа</item>
+    </plurals>
+
+    <!-- Actions -->
+    <string name="back">Назад</string>
+</resources>

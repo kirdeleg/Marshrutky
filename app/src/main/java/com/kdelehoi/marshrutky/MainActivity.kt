@@ -10,6 +10,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kdelehoi.marshrutky.ui.navigation.MarshrutkyNavGraph
+import com.kdelehoi.marshrutky.ui.theme.AppLocale
 import com.kdelehoi.marshrutky.ui.theme.MarshrutkyTheme
 import com.kdelehoi.marshrutky.ui.theme.isDark
 import com.kdelehoi.marshrutky.viewmodel.ScheduleViewModel
@@ -30,12 +31,12 @@ class MainActivity : ComponentActivity() {
             // Саме collectAsStateWithLifecycle, а не collectAsState: звичайний збирач працює,
             // поки жива композиція, а вона переживає згортання застосунку. Без цього годинник
             // і читачі DataStore крутилися б у фоні, хоч на них ніхто не дивиться.
-            val themeMode by settingsViewModel.themeMode.collectAsStateWithLifecycle()
+            val appearance by settingsViewModel.appearance.collectAsStateWithLifecycle()
 
             // enableEdgeToEdge сам вирішує, світлі чи темні робити іконки системних смуг, і
             // питає про це системну тему. Наш власний вибір теми його не обходить, тому смуги
             // треба переоголошувати щоразу, коли тема застосунку змінилася.
-            val darkTheme = themeMode.isDark()
+            val darkTheme = appearance.themeMode.isDark()
             DisposableEffect(darkTheme) {
                 enableEdgeToEdge(
                     statusBarStyle = SystemBarStyle.auto(TRANSPARENT, TRANSPARENT) { darkTheme },
@@ -44,11 +45,15 @@ class MainActivity : ComponentActivity() {
                 onDispose {}
             }
 
-            MarshrutkyTheme(themeMode = themeMode) {
-                MarshrutkyNavGraph(
-                    scheduleViewModel = scheduleViewModel,
-                    settingsViewModel = settingsViewModel
-                )
+            // Мова обгортає тему, а не навпаки: інакше назви місяців і множини в підписах
+            // лишилися б системними, бо тема їх уже не переоголосить.
+            AppLocale(appearance.language) {
+                MarshrutkyTheme(themeMode = appearance.themeMode) {
+                    MarshrutkyNavGraph(
+                        scheduleViewModel = scheduleViewModel,
+                        settingsViewModel = settingsViewModel
+                    )
+                }
             }
         }
     }

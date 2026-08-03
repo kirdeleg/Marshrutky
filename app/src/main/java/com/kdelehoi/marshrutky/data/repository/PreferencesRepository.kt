@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStoreFile
+import com.kdelehoi.marshrutky.domain.model.AppLanguage
 import com.kdelehoi.marshrutky.domain.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -27,6 +28,7 @@ data class UserPreferences(
     /** Обране в порядку, який задав користувач. */
     val favoriteRouteIds: List<String> = emptyList(),
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    val language: AppLanguage = AppLanguage.SYSTEM,
     /** Коли востаннє вдалося дістати розклади з мережі. `null` — ще жодного разу. */
     val lastSyncedAt: Instant? = null,
     /** Зупинка на вкладці «Найближчі». `null` — користувач ще нічого не вибирав. */
@@ -45,6 +47,9 @@ class PreferencesRepository(private val dataStore: DataStore<Preferences>) {
             themeMode = stored[THEME_MODE_KEY]
                 ?.let { name -> ThemeMode.entries.firstOrNull { it.name == name } }
                 ?: ThemeMode.SYSTEM,
+            language = stored[LANGUAGE_KEY]
+                ?.let { name -> AppLanguage.entries.firstOrNull { it.name == name } }
+                ?: AppLanguage.SYSTEM,
             lastSyncedAt = stored[LAST_SYNCED_AT_KEY]?.let(Instant::ofEpochSecond),
             selectedStop = stored[SELECTED_STOP_KEY]
         )
@@ -68,6 +73,12 @@ class PreferencesRepository(private val dataStore: DataStore<Preferences>) {
     suspend fun saveThemeMode(themeMode: ThemeMode) {
         dataStore.edit { preferences ->
             preferences[THEME_MODE_KEY] = themeMode.name
+        }
+    }
+
+    suspend fun saveLanguage(language: AppLanguage) {
+        dataStore.edit { preferences ->
+            preferences[LANGUAGE_KEY] = language.name
         }
     }
 
@@ -102,6 +113,7 @@ class PreferencesRepository(private val dataStore: DataStore<Preferences>) {
         val FAVORITES_ORDER_KEY = stringPreferencesKey("favorite_route_ids_ordered")
         val LEGACY_FAVORITES_KEY = stringSetPreferencesKey("favorite_route_ids")
         val THEME_MODE_KEY = stringPreferencesKey("theme_mode")
+        val LANGUAGE_KEY = stringPreferencesKey("language")
         val LAST_SYNCED_AT_KEY = longPreferencesKey("last_synced_at")
         val SELECTED_STOP_KEY = stringPreferencesKey("selected_stop")
     }

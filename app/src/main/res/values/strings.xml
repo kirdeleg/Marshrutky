@@ -47,6 +47,8 @@
     <string name="theme_system">Як у системі</string>
     <string name="theme_light">Світла</string>
     <string name="theme_dark">Темна</string>
+    <string name="settings_language">Мова</string>
+    <string name="language_system">Як у системі</string>
     <string name="settings_data_title">Розклади</string>
     <string name="settings_data_never">Ще не завантажувалися з мережі</string>
     <string name="settings_data_synced">Оновлено %1$s</string>

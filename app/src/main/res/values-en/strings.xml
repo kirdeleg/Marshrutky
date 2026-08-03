@@ -1,0 +1,73 @@
+<resources>
+    <string name="app_name">Marshrutky</string>
+
+    <!-- Bottom navigation -->
+    <string name="tab_favorites">Favourites</string>
+    <string name="tab_nearest">Nearest</string>
+    <string name="tab_routes">Routes</string>
+    <string name="tab_settings">Settings</string>
+
+    <!-- Search -->
+    <string name="search_placeholder">Route number or name</string>
+    <string name="search_clear">Clear</string>
+    <string name="nothing_found_title">Nothing found</string>
+    <string name="nothing_found_subtitle">Try another number or part of the name.</string>
+
+    <!-- Favorites -->
+    <string name="favorites_empty_title">No favourites yet</string>
+    <string name="favorites_empty_subtitle">Open the Routes tab and star the ones you take most often.</string>
+
+    <!-- Routes -->
+    <string name="routes_empty_title">No routes</string>
+    <string name="routes_empty_subtitle">Schedules are downloaded from the internet. Check your connection and tap “Refresh now” in Settings.</string>
+    <string name="favorite_add">Add to favourites</string>
+    <string name="favorite_remove">Remove from favourites</string>
+
+    <!-- Nearest -->
+    <string name="nearest_stop_label">Stop</string>
+    <string name="nearest_no_stop_title">Pick a stop</string>
+    <string name="nearest_no_stop_subtitle">I will show the next departures of every route that leaves from it.</string>
+    <string name="nearest_none_title">Nothing runs from here today</string>
+    <string name="nearest_none_subtitle">Try another stop — these routes may run on weekdays only.</string>
+    <string name="nearest_no_more_subtitle">The next departures are tomorrow.</string>
+
+    <!-- Route detail -->
+    <string name="tab_today">Today</string>
+    <string name="day_weekday">Weekdays</string>
+    <string name="day_saturday">Saturday</string>
+    <string name="day_sunday">Sunday</string>
+    <string name="direction_no_more_today">No more departures today</string>
+    <string name="direction_not_running_today">Not running today</string>
+    <string name="direction_not_running">Not running</string>
+    <string name="route_missing_title">Route not found</string>
+    <string name="route_missing_subtitle">Its file seems to have been removed from the repository.</string>
+
+    <!-- Settings -->
+    <string name="settings_theme">Theme</string>
+    <string name="theme_system">System default</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="settings_language">Language</string>
+    <string name="language_system">System default</string>
+    <string name="settings_data_title">Schedules</string>
+    <string name="settings_data_never">Never downloaded yet</string>
+    <string name="settings_data_synced">Updated %1$s</string>
+    <string name="settings_data_syncing">Checking for updates…</string>
+    <string name="settings_data_failed">Update failed, showing what was saved</string>
+    <string name="settings_refresh">Refresh now</string>
+
+    <!-- Countdown -->
+    <string name="departing_now">Departing</string>
+    <string name="in_hours_minutes">in %1$d h %2$d min</string>
+    <plurals name="in_minutes">
+        <item quantity="one">in %1$d minute</item>
+        <item quantity="other">in %1$d minutes</item>
+    </plurals>
+    <plurals name="in_hours">
+        <item quantity="one">in %1$d hour</item>
+        <item quantity="other">in %1$d hours</item>
+    </plurals>
+
+    <!-- Actions -->
+    <string name="back">Back</string>
+</resources>
