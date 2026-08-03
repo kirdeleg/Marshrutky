@@ -37,6 +37,12 @@ class RoutesRemoteDataSource(private val json: Json) {
         fetch(route.downloadUrl, ACCEPT_PLAIN)
     }
 
+    /**
+     * Свідомо без `disconnect()`: він рве сокет, а нам за один прохід треба забрати десяток файлів
+     * з того самого хоста. Дочитаний до кінця потік повертає з'єднання в пул, і наступний файл іде
+     * без нового рукостискання TLS — інакше перший запуск коштує стільки рукостискань, скільки
+     * маршрутів, і стільки ж часу з увімкненим радіомодулем.
+     */
     private fun fetch(url: String, accept: String): String {
         val connection = (URL(url).openConnection() as HttpURLConnection).apply {
             connectTimeout = TIMEOUT_MILLIS
@@ -46,15 +52,14 @@ class RoutesRemoteDataSource(private val json: Json) {
             setRequestProperty("User-Agent", USER_AGENT)
         }
 
-        try {
-            val code = connection.responseCode
-            if (code !in HTTP_OK_RANGE) {
-                throw IOException("GitHub відповів $code на $url")
-            }
-            return connection.inputStream.bufferedReader().use { it.readText() }
-        } finally {
-            connection.disconnect()
+        val code = connection.responseCode
+        if (code !in HTTP_OK_RANGE) {
+            // Тіло помилки теж треба дочитати, бо недочитане з'єднання в пул не повертається.
+            connection.errorStream?.use { it.readBytes() }
+            throw IOException("GitHub відповів $code на $url")
         }
+
+        return connection.inputStream.bufferedReader().use { it.readText() }
     }
 
     @Serializable

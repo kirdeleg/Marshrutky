@@ -6,10 +6,16 @@ import com.kdelehoi.marshrutky.data.local.RoutesCache
 import com.kdelehoi.marshrutky.data.remote.RoutesRemoteDataSource
 import com.kdelehoi.marshrutky.domain.model.Route
 import com.kdelehoi.marshrutky.domain.model.RouteFile
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import java.io.IOException
@@ -58,14 +64,29 @@ class ScheduleRepository(
                 published.all { cached[it.fileName]?.sha == it.sha }
             if (isSameSet) return@withContext RefreshResult.UpToDate
 
-            val fresh = published.map { route ->
-                cached[route.fileName]?.takeIf { it.sha == route.sha }
-                    ?: CachedRoute(route.fileName, route.sha, remote.download(route))
+            // Послідовне завантаження — це десяток запитів один за одним, тобто радіомодуль
+            // увімкнений увесь цей час. Кілька потоків заразом закінчують швидше, але пускати всі
+            // одночасно теж не варіант: стільки ж паралельних з'єднань до одного хоста нікому не
+            // потрібні, та й GitHub такий сплеск не любить.
+            val fresh = coroutineScope {
+                val limit = Semaphore(MAX_PARALLEL_DOWNLOADS)
+                published.map { route ->
+                    async {
+                        cached[route.fileName]?.takeIf { it.sha == route.sha }
+                            ?: limit.withPermit {
+                                CachedRoute(route.fileName, route.sha, remote.download(route))
+                            }
+                    }
+                }.awaitAll()
             }
             cache.replaceWith(fresh)
             _routes.value = fresh.map { it.fileName to it.content }.toRoutes()
 
             RefreshResult.Updated
+        } catch (e: CancellationException) {
+            // Скасування — не збій оновлення, а закритий екран. Якщо його проковтнути тут,
+            // корутина, яку вже зупинили, вдаватиме, що завершилася сама.
+            throw e
         } catch (e: IOException) {
             Log.w(TAG, "Не вдалося оновити розклади", e)
             RefreshResult.Failed
@@ -95,6 +116,7 @@ class ScheduleRepository(
 
     private companion object {
         const val JSON_SUFFIX = ".json"
+        const val MAX_PARALLEL_DOWNLOADS = 4
         const val TAG = "ScheduleRepository"
     }
 }
