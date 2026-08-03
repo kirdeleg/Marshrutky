@@ -83,13 +83,13 @@ ROUTE_INFO = {
     "1609": ("1609-merefa-kharkiv", "1609", None),
     "Безпалівка 1": ("bezpalivka-1-kharkiv", None, "Безпалівка 1"),
     "Безпалівка 2": ("bezpalivka-2-kharkiv", None, "Безпалівка 2"),
-    "Липкуватівка": ("lypkuvativka-kharkiv", None, "Липкуватівка"),
+    "Липкуватівка": ("1685-lypkuvativka-kharkiv", "1685", "Липкуватівка"),
     "Нова Водолага": ("nova-vodolaha-kharkiv", None, "Нова Водолага"),
     "Островерхівка": ("1665-ostroverkhivka-kharkiv", "1665", "Островерхівка"),
     "Рокитне": ("1627-rokytne-kharkiv", "1627", "Рокитне"),
     "Соколове": ("1660-sokolove-kharkiv", "1660", "Соколове"),
     "Утківка": ("1625-utkivka-kharkiv", "1625", "Утківка"),
-    "Яковлівка": ("yakovlivka-kharkiv", None, "Яковлівка"),
+    "Яковлівка": ("1669-yakovlivka-kharkiv", "1669", "Яковлівка"),
 }
 
 ROUTE_NAMES = {"1609": "Мерефа — Харків"}
