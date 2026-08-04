@@ -29,6 +29,7 @@ import androidx.compose.ui.zIndex
 class ReorderState internal constructor(
     private val listState: LazyListState,
     private val haptics: HapticFeedback,
+    private val indexOf: (key: Any) -> Int,
     private val onMove: (from: Int, to: Int) -> Unit,
     private val onSettled: () -> Unit
 ) {
@@ -56,7 +57,9 @@ class ReorderState internal constructor(
             animate
         }
 
-    internal fun start(index: Int) {
+    internal fun start(key: Any) {
+        val index = indexOf(key)
+        // Індексу немає, коли картку встигли забрати зі списку між натисканням і початком жесту.
         val item = itemAt(index) ?: return
         draggingIndex = index
         initialOffset = item.offset
@@ -93,13 +96,26 @@ class ReorderState internal constructor(
     }
 }
 
+/**
+ * Що саме означає обмін місцями: картку виймаємо і вставляємо на місце сусіда, решта зсувається сама.
+ * Окремою функцією, бо на індексах тут легко схибити, а так це перевіряється без екрана.
+ */
+fun <T> List<T>.moved(from: Int, to: Int): List<T> =
+    toMutableList().apply { add(to, removeAt(from)) }
+
+/**
+ * Усі лямбди проходять через [rememberUpdatedState], бо сам [ReorderState] запам'ятовується один раз:
+ * без цього він до кінця життя екрана правив би той список, який побачив на початку.
+ */
 @Composable
 fun rememberReorderState(
     listState: LazyListState,
+    indexOf: (key: Any) -> Int,
     onMove: (from: Int, to: Int) -> Unit,
     onSettled: () -> Unit
 ): ReorderState {
     val haptics = LocalHapticFeedback.current
+    val currentIndexOf by rememberUpdatedState(indexOf)
     val currentMove by rememberUpdatedState(onMove)
     val currentSettled by rememberUpdatedState(onSettled)
 
@@ -107,6 +123,7 @@ fun rememberReorderState(
         ReorderState(
             listState = listState,
             haptics = haptics,
+            indexOf = { key -> currentIndexOf(key) },
             onMove = { from, to -> currentMove(from, to) },
             onSettled = { currentSettled() }
         )
@@ -116,14 +133,16 @@ fun rememberReorderState(
 /**
  * Жест перетягування для картки. Прив'язуємось до [key], а не до індексу: індекс змінюється просто
  * посеред жесту, і `pointerInput` перезапустився б, обірвавши перетягування на першому ж обміні.
+ *
+ * Через це ж тут немає жодної лямбди, крім самого ключа: блок `pointerInput` не перезапускається, тож
+ * усе, що він захопив, лишилося б таким, як на початку. За свіжим порядком ходить [state].
  */
 fun Modifier.reorderable(
     state: ReorderState,
-    key: Any,
-    indexOf: (Any) -> Int
+    key: Any
 ): Modifier = pointerInput(key) {
     detectDragGesturesAfterLongPress(
-        onDragStart = { state.start(indexOf(key)) },
+        onDragStart = { state.start(key) },
         onDrag = { change, amount ->
             change.consume()
             state.drag(amount.y)

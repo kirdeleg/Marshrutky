@@ -17,9 +17,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -33,6 +34,7 @@ import com.kdelehoi.marshrutky.ui.components.RouteNumberBadge
 import com.kdelehoi.marshrutky.ui.components.ScreenLoading
 import com.kdelehoi.marshrutky.ui.components.ScreenMessage
 import com.kdelehoi.marshrutky.ui.components.SearchableScaffold
+import com.kdelehoi.marshrutky.ui.components.moved
 import com.kdelehoi.marshrutky.ui.components.rememberReorderState
 import com.kdelehoi.marshrutky.ui.components.reorderable
 import com.kdelehoi.marshrutky.ui.components.countdownText
@@ -85,19 +87,15 @@ private fun FavoritesList(
     onOpenRoute: (String) -> Unit,
     onReorder: (List<String>) -> Unit
 ) {
-    // Порядок правимо локально, поки картку тягнуть, і зберігаємо вже після відпускання — інакше
-    // кожен обмін місцями їздив би в сховище й вертався звідти з затримкою.
-    val ordered = remember { mutableStateListOf<Route>() }
-    LaunchedEffect(favorites) {
-        if (ordered != favorites) {
-            ordered.clear()
-            ordered.addAll(favorites)
-        }
-    }
+    // Поки картку тягнуть, порядок живе тут, а в сховище їде після відпускання — інакше кожен обмін
+    // місцями їздив би туди й вертався звідти з затримкою. Це саме тимчасова заміна, а не друга копія
+    // списку: поки нічого не тягнуть, тут `null`, і на екрані рівно те, що прийшло зі стану. Ключ до
+    // `remember` теж по суті — будь-яка зміна обраного ззовні (зірочка на «Маршрутах», перечитані
+    // розклади, наш же збережений порядок) створює стан заново й тим скасовує заміну.
+    var dragged by remember(favorites) { mutableStateOf<List<Route>?>(null) }
+    val ordered = dragged ?: favorites
 
-    // Фільтруємо щоразу, без remember: ключем тут може бути лише сам список, а він той самий об'єкт
-    // від початку й до кінця, тож запам'ятоване значення вже нікуди не поділося б — на екрані
-    // застигла б порожня стрічка, якою вона була до першого наповнення. Обраних десятки, не тисячі.
+    // Фільтруємо щоразу, без remember: обраних десятки, не тисячі.
     val visible = ordered.filter { it.matches(query) }
     // Під час пошуку видно не весь список, тож індекси перетягування не збігалися б із реальним
     // порядком. Міняти місцями дозволяємо тільки на повному списку.
@@ -106,8 +104,12 @@ private fun FavoritesList(
     val listState = rememberLazyListState()
     val reorder = rememberReorderState(
         listState = listState,
-        onMove = { from, to -> ordered.add(to, ordered.removeAt(from)) },
-        onSettled = { onReorder(ordered.map { it.id }) }
+        // Скрізь читаємо стан, а не `ordered` з композиції: обмін і початок наступного жесту можуть
+        // трапитися між перемальовками, і тоді вони пішли б від застарілого порядку.
+        indexOf = { id -> (dragged ?: favorites).indexOfFirst { it.id == id } },
+        onMove = { from, to -> dragged = (dragged ?: favorites).moved(from, to) },
+        // Порожньо тут буває, коли картку потримали й відпустили на місці: писати нічого.
+        onSettled = { dragged?.let { order -> onReorder(order.map(Route::id)) } }
     )
 
     when {
@@ -136,11 +138,7 @@ private fun FavoritesList(
                         .itemModifier(index, animate = Modifier.animateItem())
                         .then(
                             if (canReorder) {
-                                Modifier.reorderable(
-                                    state = reorder,
-                                    key = route.id,
-                                    indexOf = { id -> ordered.indexOfFirst { it.id == id } }
-                                )
+                                Modifier.reorderable(state = reorder, key = route.id)
                             } else {
                                 Modifier
                             }

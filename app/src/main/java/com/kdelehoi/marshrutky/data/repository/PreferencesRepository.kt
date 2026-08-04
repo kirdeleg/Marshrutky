@@ -35,6 +35,11 @@ data class UserPreferences(
     val selectedStop: String? = null
 )
 
+/**
+ * Тут, на відміну від [ScheduleRepository], інтерфейс не потрібен: шов уже є — саме сховище заходить
+ * параметром, тож у тестах працює справжній репозиторій над файлом у тимчасовій теці. Підставний
+ * тільки приховав би формат, який уже раз мінявся.
+ */
 class PreferencesRepository(private val dataStore: DataStore<Preferences>) {
 
     /**
