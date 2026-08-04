@@ -11,11 +11,17 @@ data class RoutesSource(
     val directory: String
 ) {
     /**
-     * Список файлів через Contents API: новий маршрут з'являється в застосунку одразу після пуша, без
-     * жодних індексів.
+     * Перелік файлів беремо з індексу в самому репозиторії, а не з Contents API: у того ліміт 60
+     * запитів на годину на IP без токена, а за спільним NAT оператора одну адресу ділять сотні
+     * людей. Вичерпаний ліміт — це не «оновимося пізніше», а порожній застосунок у того, хто
+     * запустив його вперше й кешу ще не має. Роздача файлів через raw.githubusercontent ліміту не
+     * має взагалі.
      */
-    val contentsUrl: String
-        get() = "https://api.github.com/repos/$owner/$repository/contents/$directory?ref=$branch"
+    val indexUrl: String
+        get() = fileUrl(INDEX_FILE_NAME)
+
+    fun fileUrl(fileName: String): String =
+        "https://raw.githubusercontent.com/$owner/$repository/$branch/$directory/$fileName"
 
     companion object {
         val Default = RoutesSource(
@@ -29,3 +35,6 @@ data class RoutesSource(
 
 /** Розклади лежать у JSON, і саме за цим суфіксом ми відрізняємо їх від решти файлів у теці. */
 const val ROUTE_FILE_SUFFIX = ".json"
+
+/** Перелік файлів із хешами вмісту. Лежить поруч із розкладами й оновлюється разом із ними. */
+const val INDEX_FILE_NAME = "index.json"

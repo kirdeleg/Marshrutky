@@ -2,37 +2,42 @@ package com.kdelehoi.marshrutky.data.remote
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 
-/** Один файл розкладу так, як його бачить GitHub. */
+/** Один файл розкладу так, як його описує індекс. */
 data class RemoteRoute(
     val fileName: String,
-    val sha: String,
-    val downloadUrl: String
+    /**
+     * Хеш вмісту — той самий, що видає `git hash-object`, тобто те саме значення, яким колись
+     * відповідав Contents API. Завдяки цьому кеші, зібрані попередніми версіями застосунку,
+     * лишилися чинними й перехід на індекс нічого повторно не завантажив.
+     */
+    val sha: String
 )
 
 /** Тягне розклади з теки, яку задає [source]. */
 class RoutesRemoteDataSource(private val json: Json, private val source: RoutesSource) {
 
     suspend fun listRoutes(): List<RemoteRoute> = withContext(Dispatchers.IO) {
-        val raw = fetch(source.contentsUrl, ACCEPT_GITHUB_JSON)
-
-        json.decodeFromString<List<ContentsEntry>>(raw)
-            .filter { it.type == TYPE_FILE && it.name.endsWith(ROUTE_FILE_SUFFIX) }
-            .mapNotNull { entry ->
-                val downloadUrl = entry.downloadUrl ?: return@mapNotNull null
-                RemoteRoute(fileName = entry.name, sha = entry.sha, downloadUrl = downloadUrl)
-            }
+        parseIndex(fetch(source.indexUrl))
     }
 
     suspend fun download(route: RemoteRoute): String = withContext(Dispatchers.IO) {
-        fetch(route.downloadUrl, ACCEPT_PLAIN)
+        fetch(source.fileUrl(route.fileName))
     }
+
+    internal fun parseIndex(raw: String): List<RemoteRoute> =
+        json.decodeFromString<RouteIndexFile>(raw).routes
+            // Індекс не описує ні себе, ні будь-що, з чого маршрут не вийде.
+            .filter { it.file != INDEX_FILE_NAME && it.file.endsWith(ROUTE_FILE_SUFFIX) }
+            // Двічі згаданий файл означав би, що перелік завжди не збігається з кешем за розміром,
+            // тобто тихе повторне завантаження всього набору кожні шість годин.
+            .distinctBy { it.file }
+            .map { RemoteRoute(fileName = it.file, sha = it.sha) }
 
     /**
      * Свідомо без `disconnect()`: він рве сокет, а нам за один прохід треба забрати десяток файлів
@@ -40,12 +45,10 @@ class RoutesRemoteDataSource(private val json: Json, private val source: RoutesS
      * без нового рукостискання TLS — інакше перший запуск коштує стільки рукостискань, скільки
      * маршрутів, і стільки ж часу з увімкненим радіомодулем.
      */
-    private fun fetch(url: String, accept: String): String {
+    private fun fetch(url: String): String {
         val connection = (URL(url).openConnection() as HttpURLConnection).apply {
             connectTimeout = TIMEOUT_MILLIS
             readTimeout = TIMEOUT_MILLIS
-            setRequestProperty("Accept", accept)
-            // GitHub відмовляє запитам без User-Agent.
             setRequestProperty("User-Agent", USER_AGENT)
         }
 
@@ -59,20 +62,17 @@ class RoutesRemoteDataSource(private val json: Json, private val source: RoutesS
         return connection.inputStream.bufferedReader().use { it.readText() }
     }
 
-    @Serializable
-    private data class ContentsEntry(
-        val name: String,
-        val type: String,
-        val sha: String,
-        @SerialName("download_url") val downloadUrl: String? = null
-    )
-
     private companion object {
-        const val ACCEPT_GITHUB_JSON = "application/vnd.github+json"
-        const val ACCEPT_PLAIN = "text/plain"
         const val USER_AGENT = "Marshrutky-Android"
         const val TIMEOUT_MILLIS = 15_000
-        const val TYPE_FILE = "file"
         val HTTP_OK_RANGE = 200..299
     }
+}
+
+/** Індекс так, як він лежить у репозиторії. */
+@Serializable
+internal data class RouteIndexFile(val routes: List<Entry> = emptyList()) {
+
+    @Serializable
+    data class Entry(val file: String, val sha: String)
 }

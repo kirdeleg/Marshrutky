@@ -1,5 +1,6 @@
 package com.kdelehoi.marshrutky.data.format
 
+import com.kdelehoi.marshrutky.data.remote.INDEX_FILE_NAME
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -123,7 +124,10 @@ class RouteFileTest {
 
     @Test
     fun `every published route file becomes a usable route`() {
-        val files = File("../routes").listFiles { file -> file.extension == "json" }.orEmpty()
+        // Поруч із розкладами лежить їхній перелік — маршрутом він не є.
+        val files = File("../routes")
+            .listFiles { file -> file.extension == "json" && file.name != INDEX_FILE_NAME }
+            .orEmpty()
         assertTrue("Теку routes не знайдено", files.isNotEmpty())
 
         files.forEach { file ->

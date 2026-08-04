@@ -25,14 +25,21 @@ has gone the direction says so instead of quietly showing tomorrow.
 ## Where the schedules live
 
 There are no timetables inside the APK. The app reads the [`routes/`](routes) directory of this
-repository through the GitHub Contents API, downloads the JSON files and keeps them on the device.
+repository over `raw.githubusercontent.com`, starting with
+[`routes/index.json`](routes/index.json), which lists every schedule file with the SHA-1 of its
+contents — the same value `git hash-object` prints.
+
+The index exists because the GitHub Contents API, which would list the directory for free, allows
+60 requests per hour per IP address without a token. Behind a mobile carrier's NAT that is a few
+people, and a spent limit is not a postponed refresh: it is an empty app for whoever installed it
+first. Raw file serving has no such limit.
 
 That means:
 
-- publishing a new route is a commit, not a release;
+- publishing a new route is a commit, not a release — but the index has to be rebuilt in the same
+  commit, see [Adding or fixing a route](#adding-or-fixing-a-route);
 - the app needs network access **once**, on first launch, and works offline afterwards;
-- a refresh only downloads files whose blob SHA changed, so an unchanged set costs a single
-  request;
+- a refresh only downloads files whose SHA changed, so an unchanged set costs a single request;
 - refreshes happen at most every six hours, and only when the device is actually online. The
   button in Settings ignores the interval.
 
@@ -99,9 +106,18 @@ then falls back to the route name.
 
 ## Adding or fixing a route
 
-Open a pull request that adds or edits a file in `routes/`. Nothing else needs to change — the app
-picks the file up on its next refresh. Accuracy matters more than coverage here: a wrong departure
-time is worse than a missing route, because it sends someone to an empty stop.
+Open a pull request that adds or edits a file in `routes/`, then rebuild the index:
+
+```sh
+python3 tools/build_index.py
+```
+
+The app only knows about files listed in the index, so a forgotten rebuild means the route never
+shows up — or, if a file was deleted, that every refresh fails on a 404. `RoutesIndexTest` compares
+the index with the directory, so a stale index fails the unit tests rather than someone's app.
+
+Accuracy matters more than coverage here: a wrong departure time is worse than a missing route,
+because it sends someone to an empty stop.
 
 ## Building
 

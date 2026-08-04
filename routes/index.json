@@ -1,0 +1,80 @@
+{
+  "routes": [
+    {
+      "file": "1154-merefa-kharkiv.json",
+      "sha": "41a4a1bc8c17f76e702abc48eb6034a62ebd8950"
+    },
+    {
+      "file": "1176-pivdenne-kharkiv.json",
+      "sha": "79e6f3cce3fcaaed94fd5308f20f6d9102c1d608"
+    },
+    {
+      "file": "1193-budy-kharkiv.json",
+      "sha": "f5ddb28c96dc46de1d66fd9fb6a6e8a0fa2fc228"
+    },
+    {
+      "file": "1587-budy-merefa.json",
+      "sha": "0d9093397455bb1da11516e6628ba136270ce04e"
+    },
+    {
+      "file": "1607-roshcha-kharkiv.json",
+      "sha": "c791f5938282e4794eed980cd23fa7a6bca25e36"
+    },
+    {
+      "file": "1608-vysokyi-kharkiv.json",
+      "sha": "38ad3c66afe97ef1fe2ea0b5d2a9ec4f6e9773d0"
+    },
+    {
+      "file": "1609-merefa-kharkiv.json",
+      "sha": "95fcba6213b154bc8bdb4c36ac5a3ca54e0a8cfe"
+    },
+    {
+      "file": "1611-merefa-kharkiv.json",
+      "sha": "fc1cc28db6d43eafb1c2b9189424781f793787bb"
+    },
+    {
+      "file": "1624-zelenyi-hai-kharkiv.json",
+      "sha": "333f0cb3afada9e264bb0e1d4f60277c3829b41d"
+    },
+    {
+      "file": "1625-utkivka-kharkiv.json",
+      "sha": "4c85c6e653b0aaafc97a993c8bf37d41171355b7"
+    },
+    {
+      "file": "1627-rokytne-kharkiv.json",
+      "sha": "f1066e211ca81233f6202609d1a565834baafbd8"
+    },
+    {
+      "file": "1660-sokolove-kharkiv.json",
+      "sha": "fc29741fb13b00dd2c946cc894c7beb6e398c7a6"
+    },
+    {
+      "file": "1665-ostroverkhivka-kharkiv.json",
+      "sha": "81b121ae0d6f95942bb17bed73f5ec88edff6e56"
+    },
+    {
+      "file": "1669-yakovlivka-kharkiv.json",
+      "sha": "bc438ad99074d4dc967330c95cb13c86c9c1796a"
+    },
+    {
+      "file": "1685-lypkuvativka-kharkiv.json",
+      "sha": "ffdbb857d0ab1474565531a40fd8399b33d3bcf4"
+    },
+    {
+      "file": "199-komarivka-kharkiv.json",
+      "sha": "1669cd51563616a626d4f7f4357b574fb0483549"
+    },
+    {
+      "file": "bezpalivka-1-kharkiv.json",
+      "sha": "1ff70abb06e05ef65b65b9dbf831db107468f2c5"
+    },
+    {
+      "file": "bezpalivka-2-kharkiv.json",
+      "sha": "f42b1531583150878e9c59c31b45dc4696595734"
+    },
+    {
+      "file": "nova-vodolaha-kharkiv.json",
+      "sha": "c3b87b2382ee6a1f63d17389061c6c25799dc4fa"
+    }
+  ]
+}
