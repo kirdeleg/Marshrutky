@@ -91,6 +91,19 @@ class DepartureCalculatorTest {
     }
 
     @Test
+    fun `past departures of a stop come before the upcoming ones`() {
+        val routeTimes = DepartureCalculator.routeTimesFrom(
+            routes = listOf(throughRoute("Островерхівка", "06:20"), throughRoute("Соколове", "06:05")),
+            stopName = "Мерефа (Селекційна)",
+            dayType = DayType.WEEKDAY
+        )
+        // «Найближчі» ділять день одним takeWhile, тож поїхані рейси мусять лежати на початку.
+        val departures = DepartureCalculator.departuresOf(routeTimes, monday(6, 10))
+
+        assertEquals(listOf(true, false), departures.map { it.departure.hasLeft })
+    }
+
+    @Test
     fun `direction without a destination falls back to the route name`() {
         val route = Route(
             id = "Комарівка",

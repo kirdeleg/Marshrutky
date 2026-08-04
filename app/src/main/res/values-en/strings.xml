@@ -30,6 +30,8 @@
     <string name="nearest_none_title">Nothing runs from here today</string>
     <string name="nearest_none_subtitle">Try another stop — these routes may run on weekdays only.</string>
     <string name="nearest_no_more_subtitle">The next departures are tomorrow.</string>
+    <string name="nearest_earlier_today">Earlier today</string>
+    <string name="nearest_jump_to_next">To the next one</string>
 
     <!-- Route detail -->
     <string name="tab_today">Today</string>
@@ -66,6 +68,16 @@
     <plurals name="in_hours">
         <item quantity="one">in %1$d hour</item>
         <item quantity="other">in %1$d hours</item>
+    </plurals>
+    <string name="departed_now">Just left</string>
+    <string name="hours_minutes_ago">%1$d h %2$d min ago</string>
+    <plurals name="minutes_ago">
+        <item quantity="one">%1$d minute ago</item>
+        <item quantity="other">%1$d minutes ago</item>
+    </plurals>
+    <plurals name="hours_ago">
+        <item quantity="one">%1$d hour ago</item>
+        <item quantity="other">%1$d hours ago</item>
     </plurals>
 
     <!-- Actions -->

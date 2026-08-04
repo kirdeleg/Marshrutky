@@ -12,8 +12,9 @@ The interface is in Ukrainian only.
 
 - **Favourites** — a card per route with the next three departures in each direction and a
   countdown to the closest one. Cards can be dragged into the order you want.
-- **Nearest** — pick a boarding stop and see every upcoming departure from it, across all routes.
-  Useful when several routes pass the same stop and only some of them suit you.
+- **Nearest** — pick a boarding stop and see the whole day from it, across all routes. It opens on
+  the next departure; the ones that already left stay above it, dimmed, because standing at a stop
+  the useful question is usually whether the bus has been yet.
 - **Routes** — the full list, searchable by number or name, with the complete timetable for
   today, weekdays, Saturday and Sunday.
 - **Settings** — theme (light, dark, system) and a manual refresh of the schedules.

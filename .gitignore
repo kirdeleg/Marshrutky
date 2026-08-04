@@ -13,3 +13,5 @@ build/
 .externalNativeBuild
 .cxx
 local.properties
+# Чернетки макетів UI: потрібні на час обговорення вигляду, у репозиторії їм місця немає.
+.mockup/

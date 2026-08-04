@@ -51,6 +51,30 @@ fun countdownText(secondsUntil: Long): String {
     }
 }
 
+/**
+ * Скільки минуло після відправлення — дзеркало [countdownText] для рейсів, які вже поїхали.
+ * Приймає той самий від'ємний `secondsUntil`, щоб місце виклику не мусило міняти знак.
+ */
+@Composable
+fun agoText(secondsUntil: Long): String {
+    // Тут, на відміну від countdownText, округлення вниз: рейс о 15:00 лишається «щойно
+    // відправився» всю хвилину і стає «1 хвилину тому» рівно тоді, коли годинник покаже 15:01.
+    val minutes = (-secondsUntil / 60).toInt()
+    return when {
+        minutes < 1 -> stringResource(R.string.departed_now)
+        minutes < 60 -> pluralStringResource(R.plurals.minutes_ago, minutes, minutes)
+        else -> {
+            val hours = minutes / 60
+            val restMinutes = minutes % 60
+            if (restMinutes == 0) {
+                pluralStringResource(R.plurals.hours_ago, hours, hours)
+            } else {
+                stringResource(R.string.hours_minutes_ago, hours, restMinutes)
+            }
+        }
+    }
+}
+
 @Composable
 fun dayTypeLabel(dayType: DayType): String = stringResource(
     when (dayType) {

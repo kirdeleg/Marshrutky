@@ -30,6 +30,8 @@
     <string name="nearest_none_title">Сегодня отсюда не ходят</string>
     <string name="nearest_none_subtitle">Попробуй другую остановку — возможно, эти маршруты ходят только по будням.</string>
     <string name="nearest_no_more_subtitle">Следующие рейсы будут завтра.</string>
+    <string name="nearest_earlier_today">Раньше сегодня</string>
+    <string name="nearest_jump_to_next">К ближайшему</string>
 
     <!-- Route detail -->
     <string name="tab_today">Сегодня</string>
@@ -70,6 +72,20 @@
         <item quantity="few">через %1$d часа</item>
         <item quantity="many">через %1$d часов</item>
         <item quantity="other">через %1$d часа</item>
+    </plurals>
+    <string name="departed_now">Только что отправился</string>
+    <string name="hours_minutes_ago">%1$d ч %2$d мин назад</string>
+    <plurals name="minutes_ago">
+        <item quantity="one">%1$d минуту назад</item>
+        <item quantity="few">%1$d минуты назад</item>
+        <item quantity="many">%1$d минут назад</item>
+        <item quantity="other">%1$d минуты назад</item>
+    </plurals>
+    <plurals name="hours_ago">
+        <item quantity="one">%1$d час назад</item>
+        <item quantity="few">%1$d часа назад</item>
+        <item quantity="many">%1$d часов назад</item>
+        <item quantity="other">%1$d часа назад</item>
     </plurals>
 
     <!-- Actions -->

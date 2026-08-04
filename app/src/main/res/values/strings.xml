@@ -30,6 +30,8 @@
     <string name="nearest_none_title">Сьогодні звідси не курсують</string>
     <string name="nearest_none_subtitle">Спробуй іншу зупинку — можливо, ці маршрути ходять лише в будні.</string>
     <string name="nearest_no_more_subtitle">Наступні рейси будуть завтра.</string>
+    <string name="nearest_earlier_today">Раніше сьогодні</string>
+    <string name="nearest_jump_to_next">До найближчого</string>
 
     <!-- Route detail -->
     <string name="tab_today">Сьогодні</string>
@@ -70,6 +72,20 @@
         <item quantity="few">через %1$d години</item>
         <item quantity="many">через %1$d годин</item>
         <item quantity="other">через %1$d години</item>
+    </plurals>
+    <string name="departed_now">Щойно відправився</string>
+    <string name="hours_minutes_ago">%1$d год %2$d хв тому</string>
+    <plurals name="minutes_ago">
+        <item quantity="one">%1$d хвилину тому</item>
+        <item quantity="few">%1$d хвилини тому</item>
+        <item quantity="many">%1$d хвилин тому</item>
+        <item quantity="other">%1$d хвилини тому</item>
+    </plurals>
+    <plurals name="hours_ago">
+        <item quantity="one">%1$d годину тому</item>
+        <item quantity="few">%1$d години тому</item>
+        <item quantity="many">%1$d годин тому</item>
+        <item quantity="other">%1$d години тому</item>
     </plurals>
 
     <!-- Actions -->
