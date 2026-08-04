@@ -1,11 +1,13 @@
 package com.kdelehoi.marshrutky.data.repository
 
 import android.util.Log
+import com.kdelehoi.marshrutky.data.format.RouteFile
+import com.kdelehoi.marshrutky.data.format.toRoute
 import com.kdelehoi.marshrutky.data.local.CachedRoute
 import com.kdelehoi.marshrutky.data.local.RoutesCache
+import com.kdelehoi.marshrutky.data.remote.ROUTE_FILE_SUFFIX
 import com.kdelehoi.marshrutky.data.remote.RoutesRemoteDataSource
 import com.kdelehoi.marshrutky.domain.model.Route
-import com.kdelehoi.marshrutky.domain.model.RouteFile
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -101,13 +103,8 @@ class ScheduleRepository(
             .sortedWith(compareBy({ it.number?.toIntOrNull() ?: Int.MAX_VALUE }, { it.number ?: it.name }))
 
     private fun parseRoute(fileName: String, content: String): Route? = try {
-        val parsed = json.decodeFromString<RouteFile>(content)
-        Route(
-            id = fileName.removeSuffix(JSON_SUFFIX),
-            number = parsed.number,
-            name = parsed.name,
-            directions = parsed.directions
-        )
+        json.decodeFromString<RouteFile>(content)
+            .toRoute(id = fileName.removeSuffix(ROUTE_FILE_SUFFIX))
     } catch (e: Exception) {
         // Один зіпсований файл не має ламати весь список маршрутів.
         Log.e(TAG, "Не вдалося прочитати маршрут $fileName", e)
@@ -115,7 +112,6 @@ class ScheduleRepository(
     }
 
     private companion object {
-        const val JSON_SUFFIX = ".json"
         const val MAX_PARALLEL_DOWNLOADS = 4
         const val TAG = "ScheduleRepository"
     }

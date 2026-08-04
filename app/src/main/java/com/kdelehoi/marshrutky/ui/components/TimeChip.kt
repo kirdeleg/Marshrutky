@@ -11,33 +11,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import java.time.LocalTime
 
-enum class TimeChipStyle {
-    /** Рейс попереду — звичайний чип. */
-    UPCOMING,
-
-    /** Найближчий рейс — залитий, з відліком. */
-    NEXT,
-
-    /** Маршрутка вже поїхала. */
-    PAST
-}
-
 @Composable
 fun TimeChip(
     time: LocalTime,
-    style: TimeChipStyle,
+    state: TripState,
     modifier: Modifier = Modifier,
     secondsUntil: Long = 0
 ) {
-    val containerColor = when (style) {
-        TimeChipStyle.NEXT -> MaterialTheme.colorScheme.primary
-        TimeChipStyle.UPCOMING -> MaterialTheme.colorScheme.surfaceContainerHighest
-        TimeChipStyle.PAST -> MaterialTheme.colorScheme.surfaceContainerLow
+    val containerColor = when (state) {
+        TripState.NEXT -> MaterialTheme.colorScheme.primary
+        TripState.UPCOMING -> MaterialTheme.colorScheme.surfaceContainerHighest
+        TripState.PAST -> MaterialTheme.colorScheme.surfaceContainerLow
     }
-    val contentColor = when (style) {
-        TimeChipStyle.NEXT -> MaterialTheme.colorScheme.onPrimary
-        TimeChipStyle.UPCOMING -> MaterialTheme.colorScheme.onSurface
-        TimeChipStyle.PAST -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+    val contentColor = when (state) {
+        TripState.NEXT -> MaterialTheme.colorScheme.onPrimary
+        TripState.UPCOMING -> MaterialTheme.colorScheme.onSurface
+        TripState.PAST -> pastTripContentColor()
     }
 
     Surface(
@@ -55,7 +44,7 @@ fun TimeChip(
                 style = MaterialTheme.typography.titleLarge
             )
 
-            if (style == TimeChipStyle.NEXT) {
+            if (state == TripState.NEXT) {
                 Text(
                     text = countdownText(secondsUntil),
                     style = MaterialTheme.typography.labelLarge,

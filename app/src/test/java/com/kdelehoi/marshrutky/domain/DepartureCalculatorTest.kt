@@ -104,29 +104,6 @@ class DepartureCalculatorTest {
     }
 
     @Test
-    fun `direction without a destination falls back to the route name`() {
-        val route = Route(
-            id = "Комарівка",
-            number = null,
-            name = "Комарівка — Харків",
-            directions = listOf(
-                Direction(
-                    label = "На Харків",
-                    stops = listOf(BoardingStop("Комарівка", WeekSchedule(weekday = listOf("06:00"))))
-                )
-            )
-        )
-
-        val routeTimes = DepartureCalculator.routeTimesFrom(
-            routes = listOf(route),
-            stopName = "Комарівка",
-            dayType = DayType.WEEKDAY
-        )
-
-        assertEquals(listOf("Комарівка — Харків"), routeTimes.map { it.destination })
-    }
-
-    @Test
     fun `a stop the route does not serve gives nothing`() {
         val routeTimes = DepartureCalculator.routeTimesFrom(
             routes = listOf(throughRoute("Островерхівка", "06:20")),
@@ -157,17 +134,15 @@ class DepartureCalculatorTest {
         name = origin,
         directions = listOf(
             Direction(
-                label = "На Харків",
                 destination = "Харків",
-                stops = listOf(
+                boardingStops = listOf(
                     BoardingStop(origin, WeekSchedule(weekday = listOf("05:50"))),
                     BoardingStop("Мерефа (Селекційна)", WeekSchedule(weekday = listOf(merefaTime)))
                 )
             ),
             Direction(
-                label = "З Харкова",
                 destination = origin,
-                stops = listOf(
+                boardingStops = listOf(
                     BoardingStop("Харків (Холодна Гора)", WeekSchedule(weekday = listOf("08:00")))
                 )
             )

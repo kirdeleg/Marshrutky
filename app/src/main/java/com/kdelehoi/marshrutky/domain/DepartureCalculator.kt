@@ -52,13 +52,10 @@ object DepartureCalculator {
     fun routeTimesFrom(routes: List<Route>, stopName: String, dayType: DayType): List<RouteTime> =
         routes.flatMap { route ->
             route.directions.flatMap { direction ->
-                // Файли без кінцевої лишаються читабельними: замість неї показуємо назву маршруту,
-                // тобто рівно те, що було до появи поля.
-                val destination = direction.destination ?: route.name
                 direction.boardingStops
                     .filter { it.name == stopName }
                     .flatMap { stop ->
-                        timesOf(stop, dayType).map { RouteTime(route, destination, it) }
+                        timesOf(stop, dayType).map { RouteTime(route, direction.destination, it) }
                     }
             }
         }.sortedBy { it.time }

@@ -79,7 +79,7 @@ A route that stops at several places along the way lists each of them with its o
 | `number` | no | Shown in a badge next to the name. Suburban routes are often unnumbered. |
 | `name` | yes | Endpoints, e.g. `Островерхівка — Харків`. |
 | `directions` | no | Usually two: there and back. |
-| `directions[].label` | yes | Never displayed; kept only as a fallback stop name for old files. |
+| `directions[].label` | no | Never displayed; kept only as a fallback stop name for old files. |
 | `directions[].destination` | no² | Where this direction ends. The Nearest tab shows it instead of the route name, because at a stop the name says nothing about which way the bus is going. |
 | `directions[].stops` | yes¹ | Boarding points in travel order, each with its own times. |
 | `stops[].name` | yes | Stops with the same name in different files are treated as one place, which is what makes the Nearest tab work. |
@@ -87,7 +87,7 @@ A route that stops at several places along the way lists each of them with its o
 
 Times are `HH:MM`. Unparseable entries are dropped, duplicates removed, and the rest sorted, so the
 order inside a list does not matter. A file that fails to parse is skipped without affecting the
-other routes.
+other routes, and so is a direction with nowhere to board.
 
 ¹ Files written before multi-stop support are still read: a direction may carry a single
 `boardingStop` string and a `schedule` object directly, instead of a `stops` list.
@@ -123,7 +123,7 @@ preferences, kotlinx.serialization for the JSON, Navigation 3 for the back stack
 
 ```
 app/src/main/java/com/kdelehoi/marshrutky/
-├── data/          cache on disk, GitHub client, preferences
+├── data/          file format, cache on disk, GitHub client, preferences
 ├── domain/        route model and departure calculations
 ├── ui/            screens, shared components, theme
 └── viewmodel/     screen state
@@ -136,6 +136,7 @@ whole chain instead of leaving it running behind a promise not to.
 
 ## Limitations
 
-- The data source is this repository, hard-coded. Other regions would need their own build.
+- The data source is this repository. It is set in one place (`RoutesSource`), but not yet
+  selectable at runtime, so another region would need its own build.
 - Intermediate stop times exist only for routes where that data was available.
 - No widget, no notifications, no live vehicle positions — the timetables are all there is.

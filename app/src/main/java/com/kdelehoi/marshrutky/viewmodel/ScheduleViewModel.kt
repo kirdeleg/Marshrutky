@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDateTime
@@ -28,32 +29,56 @@ enum class SyncStatus {
 }
 
 /**
+ * Стан розкладів. Трьома випадками, а не списком з прапорцем «завантажуємо»: порожньо буває з двох
+ * різних причин — даних ще нема, бо ми їх лише дістаємо, або їх справді немає. Плутати ці випадки —
+ * це показати «Маршрутів немає» під час першого завантаження, тобто збрехати рівно тій людині, яка
+ * щойно поставила застосунок.
+ */
+sealed interface RoutesState {
+
+    /** Кеш ще читається або йде перше завантаження з мережі. */
+    data object Loading : RoutesState
+
+    /** Дістали все, що могли, і маршрутів немає. */
+    data object Empty : RoutesState
+
+    data class Ready(val routes: List<Route>) : RoutesState {
+
+        /** Один раз на кожен новий список замість пошуку по ньому в кожній перекомпозиції. */
+        private val byId: Map<String, Route> = routes.associateBy { it.id }
+
+        fun route(routeId: String): Route? = byId[routeId]
+
+        /** Саме в порядку, який задав користувач, а не в тому, у якому маршрути лежать у файлах. */
+        fun inOrder(routeIds: List<String>): List<Route> = routeIds.mapNotNull(byId::get)
+    }
+}
+
+/**
  * Усе, крім поточного часу: він змінюється щохвилини й живе в окремому потоці. Якби він лежав тут,
  * кожна хвилина оголошувала б застарілим увесь стан — і перемальовувалися б навіть «Параметри», де
  * жодного часу немає.
  */
 data class ScheduleUiState(
-    val isLoading: Boolean = true,
-    val routes: List<Route> = emptyList(),
+    val routes: RoutesState = RoutesState.Loading,
     val favoriteRouteIds: List<String> = emptyList(),
     val syncStatus: SyncStatus = SyncStatus.IDLE,
     val lastSyncedAt: Instant? = null,
     val selectedStop: String? = null
-) {
-    /** Саме в порядку, який задав користувач, а не в тому, у якому маршрути лежать у файлах. */
-    val favoriteRoutes: List<Route>
-        get() {
-            val byId = routes.associateBy { it.id }
-            return favoriteRouteIds.mapNotNull(byId::get)
-        }
+)
 
-    fun routeById(routeId: String): Route? = routes.firstOrNull { it.id == routeId }
+/** Що саме привело нас по мережу: від цього залежить, чи показувати невдачу. */
+private enum class SyncTrigger {
+    STARTUP,
+    MANUAL
 }
 
 class ScheduleViewModel(
     private val scheduleRepository: ScheduleRepository,
     private val preferencesRepository: PreferencesRepository,
-    private val networkMonitor: NetworkMonitor
+    private val networkMonitor: NetworkMonitor,
+    /** Годинник ззовні, щоб час був даними, а не викликом усередині: інакше це не перевірити. */
+    private val clock: Clock
 ) : ViewModel() {
 
     private val syncStatus = MutableStateFlow(SyncStatus.IDLE)
@@ -74,14 +99,14 @@ class ScheduleViewModel(
      */
     val now: StateFlow<LocalDateTime> = flow {
         while (true) {
-            val now = LocalDateTime.now()
+            val now = LocalDateTime.now(clock)
             emit(now)
             delay(millisUntilNextMinute(now))
         }
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(UNSUBSCRIBE_DELAY_MILLIS),
-        initialValue = LocalDateTime.now()
+        started = SharingStarted.WhileSubscribed(STATE_UNSUBSCRIBE_DELAY_MILLIS),
+        initialValue = LocalDateTime.now(clock)
     )
 
     /**
@@ -95,12 +120,11 @@ class ScheduleViewModel(
         isStartingUp
     ) { routes, preferences, sync, startingUp ->
         ScheduleUiState(
-            // Порожньо буває з двох різних причин: даних ще нема, бо ми їх лише дістаємо, або їх
-            // справді немає. Плутати ці випадки — це показати «Маршрутів немає» під час першого
-            // завантаження, тобто збрехати рівно тій людині, яка щойно поставила застосунок.
-            isLoading = routes == null ||
-                (routes.isEmpty() && (startingUp || sync == SyncStatus.IN_PROGRESS)),
-            routes = routes.orEmpty(),
+            routes = routesState(
+                routes = routes,
+                isStartingUp = startingUp,
+                syncStatus = sync
+            ),
             favoriteRouteIds = preferences.favoriteRouteIds,
             syncStatus = sync,
             lastSyncedAt = preferences.lastSyncedAt,
@@ -108,7 +132,7 @@ class ScheduleViewModel(
         )
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(UNSUBSCRIBE_DELAY_MILLIS),
+        started = SharingStarted.WhileSubscribed(STATE_UNSUBSCRIBE_DELAY_MILLIS),
         initialValue = ScheduleUiState()
     )
 
@@ -130,7 +154,7 @@ class ScheduleViewModel(
 
     /** Кнопка «Оновити зараз»: іде по мережу незалежно від того, коли синхронізувалися востаннє. */
     fun refresh() {
-        viewModelScope.launch { sync(isManual = true) }
+        viewModelScope.launch { sync(SyncTrigger.MANUAL) }
     }
 
     /** Спершу показуємо те, що вже є на пристрої, і аж потім вирішуємо, чи йти по свіже. */
@@ -141,20 +165,20 @@ class ScheduleViewModel(
 
                 val lastSyncedAt = preferencesRepository.preferences.first().lastSyncedAt
                 val isFresh = lastSyncedAt != null &&
-                    Duration.between(lastSyncedAt, Instant.now()) < SYNC_INTERVAL
+                    Duration.between(lastSyncedAt, Instant.now(clock)) < SYNC_INTERVAL
                 // Розклади міняються раз на місяці, тож ходити по мережу на кожен запуск нема сенсу.
-                if (!isFresh) sync(isManual = false)
+                if (!isFresh) sync(SyncTrigger.STARTUP)
             } finally {
                 isStartingUp.value = false
             }
         }
     }
 
-    private suspend fun sync(isManual: Boolean) {
+    private suspend fun sync(trigger: SyncTrigger) {
         if (!networkMonitor.isOnline) {
             // Про невдачу повідомляємо, лише якщо оновлення попросили руками: інакше це просто
             // марно розбуджений радіомодуль і червоний напис нізащо.
-            if (isManual) syncStatus.value = SyncStatus.FAILED
+            if (trigger == SyncTrigger.MANUAL) syncStatus.value = SyncStatus.FAILED
             return
         }
 
@@ -165,7 +189,7 @@ class ScheduleViewModel(
         when (scheduleRepository.refresh()) {
             RefreshResult.Updated, RefreshResult.UpToDate -> {
                 syncStatus.value = SyncStatus.IDLE
-                preferencesRepository.saveLastSyncedAt(Instant.now())
+                preferencesRepository.saveLastSyncedAt(Instant.now(clock))
             }
 
             RefreshResult.Failed -> syncStatus.value = SyncStatus.FAILED
@@ -173,9 +197,23 @@ class ScheduleViewModel(
     }
 
     private companion object {
-        const val UNSUBSCRIBE_DELAY_MILLIS = 5_000L
         val SYNC_INTERVAL: Duration = Duration.ofHours(6)
     }
+}
+
+/**
+ * Куди віднести те, що дав репозиторій. `null` — кеш ще не читали; порожній список під час першого
+ * підйому або синхронізації — це теж «завантажуємо», бо даним ще не було звідки взятися.
+ */
+internal fun routesState(
+    routes: List<Route>?,
+    isStartingUp: Boolean,
+    syncStatus: SyncStatus
+): RoutesState = when {
+    routes == null -> RoutesState.Loading
+    routes.isNotEmpty() -> RoutesState.Ready(routes)
+    isStartingUp || syncStatus == SyncStatus.IN_PROGRESS -> RoutesState.Loading
+    else -> RoutesState.Empty
 }
 
 /** Скільки лишилося до наступної рівної хвилини. Винесено окремо, бо на межі доби легко схибити. */

@@ -18,6 +18,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -29,6 +30,7 @@ import com.kdelehoi.marshrutky.ui.components.RouteNumberBadge
 import com.kdelehoi.marshrutky.ui.components.ScreenLoading
 import com.kdelehoi.marshrutky.ui.components.ScreenMessage
 import com.kdelehoi.marshrutky.ui.components.SearchableScaffold
+import com.kdelehoi.marshrutky.viewmodel.RoutesState
 import com.kdelehoi.marshrutky.viewmodel.ScheduleUiState
 
 @Composable
@@ -38,34 +40,39 @@ fun RoutesScreen(
     onToggleFavorite: (String) -> Unit
 ) {
     SearchableScaffold { query ->
-        val visible = state.routes.filter { it.matches(query) }
+        when (val routes = state.routes) {
+            RoutesState.Loading -> ScreenLoading()
 
-        when {
-            state.isLoading -> ScreenLoading()
-
-            state.routes.isEmpty() -> ScreenMessage(
+            RoutesState.Empty -> ScreenMessage(
                 title = stringResource(R.string.routes_empty_title),
                 subtitle = stringResource(R.string.routes_empty_subtitle)
             )
 
-            visible.isEmpty() -> ScreenMessage(
-                title = stringResource(R.string.nothing_found_title),
-                subtitle = stringResource(R.string.nothing_found_subtitle)
-            )
+            is RoutesState.Ready -> {
+                val visible = remember(routes, query) { routes.routes.filter { it.matches(query) } }
 
-            else -> LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                items(visible, key = { it.id }) { route ->
-                    RouteCard(
-                        route = route,
-                        isFavorite = route.id in state.favoriteRouteIds,
-                        onClick = { exitSearchAnd { onOpenRoute(route.id) } },
-                        onToggleFavorite = { onToggleFavorite(route.id) },
-                        modifier = Modifier.animateItem()
+                if (visible.isEmpty()) {
+                    ScreenMessage(
+                        title = stringResource(R.string.nothing_found_title),
+                        subtitle = stringResource(R.string.nothing_found_subtitle)
                     )
+                    return@SearchableScaffold
+                }
+
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(visible, key = { it.id }) { route ->
+                        RouteCard(
+                            route = route,
+                            isFavorite = route.id in state.favoriteRouteIds,
+                            onClick = { exitSearchAnd { onOpenRoute(route.id) } },
+                            onToggleFavorite = { onToggleFavorite(route.id) },
+                            modifier = Modifier.animateItem()
+                        )
+                    }
                 }
             }
         }

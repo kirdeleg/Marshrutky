@@ -29,7 +29,7 @@ class SettingsViewModel(
         .stateIn(
             scope = viewModelScope,
             // Як і решта стану: поки екрана не видно, читача DataStore тримати нема навіщо.
-            started = SharingStarted.WhileSubscribed(UNSUBSCRIBE_DELAY_MILLIS),
+            started = SharingStarted.WhileSubscribed(STATE_UNSUBSCRIBE_DELAY_MILLIS),
             initialValue = AppearanceState()
         )
 
@@ -43,9 +43,5 @@ class SettingsViewModel(
         viewModelScope.launch {
             preferencesRepository.saveLanguage(language)
         }
-    }
-
-    private companion object {
-        const val UNSUBSCRIBE_DELAY_MILLIS = 5_000L
     }
 }

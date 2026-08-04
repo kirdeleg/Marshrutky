@@ -3,10 +3,8 @@ package com.kdelehoi.marshrutky.ui.components
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -27,14 +25,14 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 /**
- * Гумка на межі списку: перші точки стрічка йде рівно за пальцем, далі кожна наступна дається все
- * важче, а [maxPx] вона не перетне, хоч тягни через увесь екран.
+ * Сама гумка, без стрічки: перші точки вона йде рівно за пальцем, далі кожна наступна дається все
+ * важче, а [maxPx] не перетне, хоч тягни через увесь екран.
  *
  * Опір мусить бути видимий, а не відчутний як затримка. Якщо стрічку тільки пригальмувати, жест
  * читається як «свайп, що підвис»: рух є, він просто пізніше. Гумка читається інакше, бо контент
  * прив'язаний до пальця, відстає від нього все більше й має стелю, у яку впирається.
  */
-internal class PullResistanceState(private val maxPx: Float, private val thresholdPx: Float) {
+internal class RubberBand(private val maxPx: Float, private val thresholdPx: Float) {
 
     /** Шлях пальця за межу. */
     var pulled = 0f
@@ -48,7 +46,7 @@ internal class PullResistanceState(private val maxPx: Float, private val thresho
     val overThreshold: Boolean
         get() = pulled >= thresholdPx
 
-    /** Наскільно стрічка відстала від пальця: рівно це вона й доганяє, коли гумка лусне. */
+    /** Наскільки стрічка відстала від пальця: рівно це вона й доганяє, коли гумка лусне. */
     val lag: Float
         get() = pulled - stretch
 
@@ -56,7 +54,7 @@ internal class PullResistanceState(private val maxPx: Float, private val thresho
      * Забирає свою частину дельти й повертає її. Решта дістається списку — рівно стільки, скільки
      * бракує гумці до нової довжини.
      */
-    fun drag(delta: Float): Float {
+    fun pull(delta: Float): Float {
         pulled += delta
 
         // Крива з асимптотою maxPx, але з власною початковою жорсткістю: [START_FOLLOW] задає, як
@@ -75,113 +73,139 @@ internal class PullResistanceState(private val maxPx: Float, private val thresho
      * не зачіпають; на справжньому русі назад ми просто перестаємо заважати.
      */
     fun reverse(delta: Float, jitterPx: Float) {
-        if (-delta > jitterPx) reset()
+        if (-delta > jitterPx) release()
     }
 
-    fun reset() {
+    fun release() {
         pulled = 0f
         stretch = 0f
     }
 
     internal companion object {
-        /** Частка руху пальця, яку стрічка бере на самому початку. Далі — тільно менше. */
+        /** Частка руху пальця, яку стрічка бере на самому початку. Далі — тільки менше. */
         const val START_FOLLOW = 0.45f
     }
 }
 
 /**
- * Межа перед карткою [boundary]: картка стає домівкою списку, і потрапити за неї можна лише гумкою.
+ * Що з межею сталося в межах одного жесту.
  *
- * Прокрутка спиняється на цій картці з обох боків — і коли повертаєшся з-за межі, і коли підходиш до
- * неї знизу, — разом із інерцією, тож флік не пролітає домівку, а стає на неї.
+ * Одне значення, а не набір прапорців: станів тут п'ять, і поки їх описували три незалежні
+ * булеві змінні, більшість комбінацій не означала нічого, а одна з них глушила прокрутку
+ * назовсім — досить було скасованої інерції, після якої `onPostFling` не приходить.
+ */
+private enum class Phase {
+
+    /** Ще нічого не сталося: жест може і спинитися на домі, і потягнути гумку. */
+    FREE,
+
+    /**
+     * Стрічка стала на дім, ідучи в минуле: далі в минуле цей жест уже не поїде.
+     *
+     * Засув тримає лише той бік, з якого до нього прийшли. Повести палець назад — це нова думка, а
+     * не продовження попередньої, тож там стрічка знову вільна: інакше після клацання жест виглядав
+     * би як заклякла прокрутка, поки не відпустиш палець.
+     */
+    HOME_GOING_PAST,
+
+    /** Стрічка стала на дім, вертаючись із минулого: далі в майбутнє цей жест уже не поїде. */
+    HOME_GOING_FUTURE,
+
+    /** Гумка тягнеться. */
+    STRETCH,
+
+    /** Гумка лусну́ла — до кінця жесту не заважаємо. */
+    TORN,
+
+    /** Везе стрічку з минулого назад до дому. */
+    RETURN;
+
+    val isHome: Boolean
+        get() = this == HOME_GOING_PAST || this == HOME_GOING_FUTURE
+}
+
+/**
+ * Межа перед домом [AnchoredScroll.homePosition]: дім — це домівка списку, і потрапити за неї можна
+ * лише гумкою.
+ *
+ * Прокрутка спиняється на домі з обох боків — і коли повертаєшся з минулого, і коли підходиш до нього
+ * з майбутнього, — разом із інерцією, тож флік не пролітає домівку, а стає на неї.
  *
  * За межу пускає лише гумка, і на [thresholdPx] вона **рветься**: клац у пальці, стрічка тим же рухом
  * доганяє палець, і далі жест іде як звичайна прокрутка. Це найважливіше в усій механіці. Поки гумка
- * тільно «зараховувала» витягування, вібрація обіцяла подію, якої на екрані не було: рейси стояли
+ * тільки «зараховувала» витягування, вібрація обіцяла подію, якої на екрані не було: рейси стояли
  * там, де їх застав палець, і тіло з очима казали різне. Відпустив, не дотягнувши, — стрічка
- * відскакує пружиною на межу.
+ * відскакує пружиною на дім.
  *
- * [onDetent] — той самий клац на обидва випадки: стрічка стала на межу або гумка лусну́ла.
+ * [onDetent] — той самий клац на обидва випадки: стрічка стала на дім або гумка лусну́ла.
  *
  * Інерцію в бік минулого гумкою не чіпаємо: пригальмований флік відчувається як заїдання, а не як
  * опір.
  */
 internal class PullResistance(
-    private val listState: LazyListState,
+    private val anchored: AnchoredScroll,
     thresholdPx: Float,
     maxPx: Float,
     private val jitterPx: Float,
-    private val slopPx: Float,
-    private val snapPx: Float,
+    private val roundingPx: Float,
+    private val homeSlopPx: Float,
     private val scope: CoroutineScope,
-    private val boundary: () -> Int,
     private val onDetent: () -> Unit
 ) : NestedScrollConnection {
 
-    private val state = PullResistanceState(maxPx = maxPx, thresholdPx = thresholdPx)
+    private val band = RubberBand(maxPx = maxPx, thresholdPx = thresholdPx)
 
-    /** Пружина повернення на межу: відскок мусить бути видно, тож лишаємо її недогашеною. */
-    private val snapBack = spring<Float>(dampingRatio = BOUNCE, stiffness = Spring.StiffnessMedium)
-
-    /** Жест уже везе стрічку назад до межі, тож далі за неї ми його не пустимо. */
-    private var returning = false
-    private var landed = false
-
-    /** Гумка цього жесту вже лусну́ла — далі ми не заважаємо. */
-    private var torn = false
+    private var phase = Phase.FREE
     private var catchUp: Job? = null
 
     /**
      * Разом із опором навішує скидання стану на дотик.
      *
-     * Стан межі живе рівно один жест, і спиратися на його кінець не можна: скасовану інерцію Compose
-     * завершує без `onPostFling`, а скасоване перетягування — і без `onPreFling`. Через це прапорці
-     * переживали свій жест і глушили прокрутку в обидва боки. Дотик до екрана — єдиний сигнал початку
-     * жесту, який не губиться ніколи.
+     * Фаза живе рівно один жест, і спиратися на його кінець не можна: скасовану інерцію Compose
+     * завершує без `onPostFling`, а скасоване перетягування — і без `onPreFling`. Через це фаза
+     * переживала свій жест і глушила прокрутку в обидва боки. Дотик до екрана — єдиний сигнал
+     * початку жесту, який не губиться ніколи.
      */
     val modifier: Modifier = Modifier
         .pointerInput(this) {
             awaitEachGesture {
                 awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-                forget()
+                forgetGesture()
             }
         }
         .nestedScroll(this)
 
     override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-        val index = boundary()
         // Минулого сьогодні не було — тоді верхній край списку звичайний, і спротив на ньому дає
         // система своїм stretch-overscroll.
-        if (index <= 0) return Offset.Zero
+        if (!anchored.hasPast) return Offset.Zero
 
         val delta = available.y
-        val gap = listState.gapTo(index)
-
-        return if (delta > 0f) pull(delta, index, source, gap) else giveBack(delta, gap)
+        return if (delta > 0f) towardPast(delta, source) else towardFuture(delta)
     }
 
     override suspend fun onPreFling(available: Velocity): Velocity {
-        val stretch = state.stretch
-        state.reset()
+        val stretch = band.stretch
+        band.release()
 
         // Гумка лусну́ла — інерцію пускаємо далі: різкий жест має влетіти в минуле, а не спинитися
         // там, де його застало розривання.
-        if (torn) return Velocity.Zero
+        if (phase == Phase.TORN) return Velocity.Zero
 
         // Не дотягнув: гумка стягується назад, і швидкість гасимо, щоб список не поїхав туди, куди
         // його не пустили.
         if (stretch > 0f) {
-            listState.animateScrollBy(stretch, snapBack)
+            anchored.settle(stretch)
             return available
         }
 
-        // Жест міг лишити стрічку за кілька точок від межі — наприклад, коли посеред витягування
+        // Жест міг лишити стрічку за кілька точок від дому — наприклад, коли посеред витягування
         // передумав і повів палець назад. Такий залишок треба прибирати, бо він тихо ламає одразу
         // все: гумка вважає, що ми вже в минулому, і не чіпляється, зверху визирає смужка поїханого
         // рейсу, а кнопка повернення світиться без причини.
-        val leftover = listState.gapTo(boundary()) ?: return Velocity.Zero
-        if (leftover > slopPx && leftover <= snapPx) {
-            listState.animateScrollBy(leftover, snapBack)
+        val leftover = (anchored.homePosition as? HomePosition.Visible)?.gap ?: return Velocity.Zero
+        if (leftover > roundingPx && leftover <= homeSlopPx) {
+            anchored.settle(leftover)
             return available
         }
 
@@ -189,69 +213,103 @@ internal class PullResistance(
     }
 
     override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-        val stopped = landed
-        forget()
+        val landed = phase.isHome
+        forgetGesture()
 
-        // Дуже різкий флік бачить межу лише за кадр до неї й може її перескочити — тоді доводимо
+        // Дуже різкий флік бачить дім лише за кадр до нього й може його перескочити — тоді доводимо
         // стрічку на місце самі, це кілька десятків точок.
-        val index = boundary()
-        if (stopped && index > 0) {
-            val gap = listState.gapTo(index)
-            if (gap == null || gap > slopPx) listState.animateScrollToItem(index)
+        if (landed && anchored.hasPast) {
+            val home = anchored.homePosition
+            if (home !is HomePosition.Visible || home.gap > roundingPx) anchored.snapToHome()
         }
 
         return Velocity.Zero
     }
 
-    /** Рух у бік минулого: знизу — до межі, з самої межі — гумкою. */
-    private fun pull(delta: Float, index: Int, source: NestedScrollSource, gap: Float?): Offset {
-        returning = false
-        if (torn) return Offset.Zero
-        // Ми знову нижче межі, тож наступний підхід до неї теж отримає свій клац.
-        if (gap != null && gap < -slopPx) landed = false
+    /** Рух у бік минулого: з майбутнього — до дому, з самого дому — гумкою. */
+    private fun towardPast(delta: Float, source: NestedScrollSource): Offset {
+        if (phase == Phase.TORN) return Offset.Zero
+        // Напрямок змінився: повернення додому вже не при чому, а засув із того боку відпускає.
+        if (phase == Phase.RETURN || phase == Phase.HOME_GOING_FUTURE) phase = Phase.FREE
 
-        if (state.pulled == 0f) {
-            val room = roomToBoundary(index, gap)
-            when {
-                // До межі ще далеко — не заважаємо.
-                room == null -> Unit
-                room == FAR -> return Offset.Zero
-                // Підходимо знизу: віддаємо рівно стільки, щоб картка стала врівень із краєм.
-                delta > room -> {
-                    click()
-                    return Offset(0f, delta - room)
+        val home = anchored.homePosition
+        // Ми знову за домом, тож наступний підхід до нього теж отримає свій клац.
+        if (phase == Phase.HOME_GOING_PAST && home is HomePosition.Visible && home.gap < -roundingPx) {
+            phase = Phase.FREE
+        }
+        // Цим жестом дім уже спійманий — глибше в минуле стрічка не поїде.
+        if (phase == Phase.HOME_GOING_PAST) return Offset(0f, delta)
+
+        if (phase != Phase.STRETCH) {
+            when (home) {
+                // Дім вище екрана: ми пішли далеко по дню, спиняти ще рано.
+                HomePosition.AboveScreen -> return Offset.Zero
+                // Глибше в минулому все вже показане — тягнути там нічого.
+                HomePosition.BelowScreen -> return Offset.Zero
+                is HomePosition.Visible -> when {
+                    // Підходимо з майбутнього: віддаємо рівно стільки, щоб дім став врівень із краєм.
+                    home.gap < -roundingPx -> {
+                        val room = -home.gap
+                        if (delta <= room) return Offset.Zero
+                        arriveHome(Phase.HOME_GOING_PAST)
+                        return Offset(0f, delta - room)
+                    }
+                    // Ми вже за домом, у минулому: гумка своє відпрацювала.
+                    home.gap > roundingPx -> return Offset.Zero
                 }
-
-                else -> return Offset.Zero
             }
-
-            // Цим жестом ми вже стали на межу: за неї — лише наступним рухом, свідомо.
-            if (landed) return Offset(0f, delta)
-            // Глибше в минулому все вже показане, тягнути там нічого.
-            if (gap == null || gap > slopPx) return Offset.Zero
         }
 
         if (source != NestedScrollSource.UserInput) return Offset.Zero
 
-        val consumed = state.drag(delta)
-        if (state.overThreshold) tear()
+        phase = Phase.STRETCH
+        val consumed = band.pull(delta)
+        if (band.overThreshold) tear()
 
         return Offset(0f, consumed)
+    }
+
+    /** Рух назад до найближчого рейсу — до дому й ані точки далі. */
+    private fun towardFuture(delta: Float): Offset {
+        band.reverse(delta, jitterPx)
+        // Гумка відпущена, тож жест почався заново — з тим самим правом спинитися на домі.
+        if (phase == Phase.STRETCH && band.stretch == 0f) phase = Phase.FREE
+        // Напрямок змінився, і засув із боку минулого відпускає.
+        if (phase == Phase.HOME_GOING_PAST) phase = Phase.FREE
+        // Цим жестом дім уже спійманий — далі по дню стрічка не поїде.
+        if (phase == Phase.HOME_GOING_FUTURE) return Offset(0f, delta)
+
+        val home = anchored.homePosition
+        // Дому не видно: або ми глибоко в минулому, або далеко по дню — спиняти нічого.
+        if (home !is HomePosition.Visible) return Offset.Zero
+        if (home.gap > roundingPx) phase = Phase.RETURN
+        // Стоїмо на домі й рушили далі по дню — це звичайна прокрутка.
+        if (phase != Phase.RETURN) return Offset.Zero
+        if (delta >= -home.gap) return Offset.Zero
+
+        arriveHome(Phase.HOME_GOING_FUTURE)
+        return Offset(0f, delta + home.gap)
+    }
+
+    /** Стрічка стала на дім: клац, і далі цим жестом у той самий бік за дім не пускаємо. */
+    private fun arriveHome(phase: Phase) {
+        this.phase = phase
+        onDetent()
     }
 
     /**
      * Гумка лусну́ла: клац і стрічка доганяє палець.
      *
-     * Догін веземо власною анімацією через `dispatchRawDelta`, бо палець тримає сесію прокрутки з
-     * вищим приоритетом — звичайний `animateScrollBy` в неї просто не пустять. Сирі дельти цю чергу
-     * обходять, тож ривок видно навіть тоді, коли палець спинився рівно на порозі.
+     * Догін веземо сирими дельтами, бо палець тримає сесію прокрутки з вищим приоритетом — звичайну
+     * анімовану прокрутку в неї просто не пустять. Сирі дельти цю чергу обходять, тож ривок видно
+     * навіть тоді, коли палець спинився рівно на порозі.
      */
     private fun tear() {
-        torn = true
+        phase = Phase.TORN
         onDetent()
 
-        val distance = state.lag
-        state.reset()
+        val distance = band.lag
+        band.release()
         if (distance <= 0f) return
 
         catchUp?.cancel()
@@ -262,109 +320,58 @@ internal class PullResistance(
                 targetValue = distance,
                 animationSpec = spring(dampingRatio = CATCH_UP_DAMPING, stiffness = Spring.StiffnessMedium)
             ) { value, _ ->
-                listState.dispatchRawDelta(applied - value)
+                anchored.nudge(applied - value)
                 applied = value
             }
         }
     }
 
-    /** Рух назад до найближчого рейсу — до межі й ані точки далі. */
-    private fun giveBack(delta: Float, gap: Float?): Offset {
-        state.reverse(delta, jitterPx)
-
-        // Межі ще не видно: ми глибоко в минулому, спиняти нічого.
-        if (gap == null) return Offset.Zero
-        if (gap > slopPx) returning = true
-        // Стоїмо на межі й рушили в майбутнє — це звичайна прокрутка дня.
-        if (!returning) return Offset.Zero
-        if (delta >= -gap) return Offset.Zero
-
-        click()
-        return Offset(0f, delta + gap)
-    }
-
-    /**
-     * Скільки ще можна проїхати вгору, поки межа не стане врівень із краєм: [FAR] — вона десь далеко
-     * внизу, null — ми вже не нижче за неї.
-     */
-    private fun roomToBoundary(index: Int, gap: Float?): Float? = when {
-        gap != null -> if (gap < -slopPx) -gap else null
-        // Картку не видно: або вона попереду за екраном, або ми вже в минулому.
-        listState.firstVisibleItemIndex > index -> FAR
-        else -> null
-    }
-
-    private fun click() {
-        if (!landed) {
-            landed = true
-            onDetent()
-        }
-    }
-
     /** Забути все, що стосувалося попереднього жесту. */
-    private fun forget() {
-        returning = false
-        landed = false
-        torn = false
+    internal fun forgetGesture() {
+        phase = Phase.FREE
         catchUp?.cancel()
         catchUp = null
-        state.reset()
+        band.release()
+    }
+
+    private companion object {
+        /** Догін пальця — з натяком на ривок, але без коливань. */
+        const val CATCH_UP_DAMPING = 0.8f
     }
 }
 
 @Composable
 internal fun rememberPullResistance(
-    listState: LazyListState,
+    anchored: AnchoredListState,
     threshold: Dp,
     maxStretch: Dp,
-    boundary: () -> Int,
     onDetent: () -> Unit
 ): PullResistance {
     val density = LocalDensity.current
     val thresholdPx = with(density) { threshold.toPx() }
     val maxPx = with(density) { maxStretch.toPx() }
     val jitterPx = with(density) { JITTER.toPx() }
-    val slopPx = with(density) { SLOP.toPx() }
-    val snapPx = with(density) { SNAP.toPx() }
+    val roundingPx = with(density) { ROUNDING.toPx() }
+    val homeSlopPx = with(density) { HOME_SLOP.toPx() }
     val scope = rememberCoroutineScope()
     val detent = rememberUpdatedState(onDetent)
-    val boundaryIndex = rememberUpdatedState(boundary)
 
-    return remember(listState, thresholdPx, maxPx) {
+    return remember(anchored, thresholdPx, maxPx) {
         PullResistance(
-            listState = listState,
+            anchored = anchored,
             thresholdPx = thresholdPx,
             maxPx = maxPx,
             jitterPx = jitterPx,
-            slopPx = slopPx,
-            snapPx = snapPx,
+            roundingPx = roundingPx,
+            homeSlopPx = homeSlopPx,
             scope = scope,
-            boundary = { boundaryIndex.value() },
             onDetent = { detent.value() }
         )
     }
 }
 
-/** Відступ картки [index] від верхнього краю; null — її не видно. */
-private fun LazyListState.gapTo(index: Int): Float? {
-    val item = layoutInfo.visibleItemsInfo.firstOrNull { it.index == index } ?: return null
-    return (item.offset - layoutInfo.viewportStartOffset).toFloat()
-}
-
-/** Межа десь за екраном: скільки саме до неї — невідомо, та й спиняти ще рано. */
-private const val FAR = Float.MAX_VALUE
-
 /** Менші ривки назад під час перетягування — це тремтіння пальця. */
 private val JITTER = 2.dp
 
-/** Допуск на округлення: після анімації можна стояти за півпікселя від межі. */
-private val SLOP = 2.dp
-
-/** Залишок до цієї відстані вважаємо недоведеним жестом і прибираємо самі. */
-private val SNAP = 32.dp
-
-/** Відскок мусить бути видно, тож пружину лишаємо недогашеною. */
-private const val BOUNCE = 0.55f
-
-/** Догін пальця — з натяком на ривок, але без коливань. */
-private const val CATCH_UP_DAMPING = 0.8f
+/** Допуск на округлення: після анімації можна стояти за півпікселя від дому. */
+private val ROUNDING = 2.dp

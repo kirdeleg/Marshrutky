@@ -16,17 +16,14 @@ data class RemoteRoute(
     val downloadUrl: String
 )
 
-/**
- * Тягне розклади з `routes/` у репозиторії. Список файлів беремо через Contents API, щоб
- * новий маршрут з'являвся в застосунку одразу після пуша, без жодних індексів.
- */
-class RoutesRemoteDataSource(private val json: Json) {
+/** Тягне розклади з теки, яку задає [source]. */
+class RoutesRemoteDataSource(private val json: Json, private val source: RoutesSource) {
 
     suspend fun listRoutes(): List<RemoteRoute> = withContext(Dispatchers.IO) {
-        val raw = fetch(CONTENTS_URL, ACCEPT_GITHUB_JSON)
+        val raw = fetch(source.contentsUrl, ACCEPT_GITHUB_JSON)
 
         json.decodeFromString<List<ContentsEntry>>(raw)
-            .filter { it.type == TYPE_FILE && it.name.endsWith(JSON_SUFFIX) }
+            .filter { it.type == TYPE_FILE && it.name.endsWith(ROUTE_FILE_SUFFIX) }
             .mapNotNull { entry ->
                 val downloadUrl = entry.downloadUrl ?: return@mapNotNull null
                 RemoteRoute(fileName = entry.name, sha = entry.sha, downloadUrl = downloadUrl)
@@ -71,12 +68,10 @@ class RoutesRemoteDataSource(private val json: Json) {
     )
 
     private companion object {
-        const val CONTENTS_URL = "https://api.github.com/repos/kirdeleg/Marshrutky/contents/routes?ref=main"
         const val ACCEPT_GITHUB_JSON = "application/vnd.github+json"
         const val ACCEPT_PLAIN = "text/plain"
         const val USER_AGENT = "Marshrutky-Android"
         const val TIMEOUT_MILLIS = 15_000
-        const val JSON_SUFFIX = ".json"
         const val TYPE_FILE = "file"
         val HTTP_OK_RANGE = 200..299
     }

@@ -20,6 +20,7 @@ data class CachedRoute(
 class RoutesCache(context: Context, private val json: Json) {
 
     private val directory = File(context.filesDir, DIRECTORY)
+    private val staging = File(context.filesDir, STAGING_DIRECTORY)
 
     fun read(): List<CachedRoute> {
         val index = readIndex() ?: return emptyList()
@@ -30,14 +31,22 @@ class RoutesCache(context: Context, private val json: Json) {
         }
     }
 
+    /**
+     * Новий знімок збираємо поруч і лише зібраний ставимо на місце старого. Писати одразу в робочу
+     * теку означало б, що вбитий посеред запису процес лишає по собі половину розкладів з індексом
+     * від цілого набору — і застосунок вважає цю половину повними даними.
+     */
     fun replaceWith(routes: List<CachedRoute>) {
         try {
-            directory.deleteRecursively()
-            directory.mkdirs()
-            routes.forEach { route -> File(directory, route.fileName).writeText(route.content) }
-            File(directory, INDEX_FILE).writeText(
+            staging.deleteRecursively()
+            staging.mkdirs()
+            routes.forEach { route -> File(staging, route.fileName).writeText(route.content) }
+            File(staging, INDEX_FILE).writeText(
                 json.encodeToString(Index.serializer(), Index(routes.associate { it.fileName to it.sha }))
             )
+
+            directory.deleteRecursively()
+            staging.renameTo(directory)
         } catch (e: Exception) {
             // Кеш — не джерело правди: якщо не записався, наступного разу просто перекачаємо.
             Log.e(TAG, "Не вдалося зберегти кеш розкладів", e)
@@ -57,6 +66,7 @@ class RoutesCache(context: Context, private val json: Json) {
 
     private companion object {
         const val DIRECTORY = "routes"
+        const val STAGING_DIRECTORY = "routes.new"
         const val INDEX_FILE = "index.json"
         const val TAG = "RoutesCache"
     }

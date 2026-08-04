@@ -36,11 +36,13 @@ import com.kdelehoi.marshrutky.R
 import com.kdelehoi.marshrutky.domain.DepartureCalculator
 import com.kdelehoi.marshrutky.domain.model.BoardingStop
 import com.kdelehoi.marshrutky.domain.model.DayType
+import com.kdelehoi.marshrutky.ui.components.ScreenLoading
 import com.kdelehoi.marshrutky.ui.components.ScreenMessage
 import com.kdelehoi.marshrutky.ui.components.TabChangeHaptics
 import com.kdelehoi.marshrutky.ui.components.goToPage
 import com.kdelehoi.marshrutky.ui.components.TimeChip
-import com.kdelehoi.marshrutky.ui.components.TimeChipStyle
+import com.kdelehoi.marshrutky.ui.components.TripState
+import com.kdelehoi.marshrutky.viewmodel.RoutesState
 import com.kdelehoi.marshrutky.viewmodel.ScheduleUiState
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
@@ -61,7 +63,9 @@ fun RouteDetailScreen(
     onToggleFavorite: (String) -> Unit,
     onBack: () -> Unit
 ) {
-    val route = state.routeById(routeId)
+    // Екран можна відкрити й тоді, коли розкладів ще немає: система вміє відновити стек навігації
+    // після того, як процес убили, і тоді маршрут з'явиться аж після читання кешу.
+    val route = (state.routes as? RoutesState.Ready)?.route(routeId)
     val isFavorite = routeId in state.favoriteRouteIds
     val pagerState = rememberPagerState(pageCount = { ScheduleTab.entries.size })
     val scope = rememberCoroutineScope()
@@ -105,11 +109,15 @@ fun RouteDetailScreen(
         }
     ) { innerPadding ->
         if (route == null) {
-            ScreenMessage(
-                title = stringResource(R.string.route_missing_title),
-                subtitle = stringResource(R.string.route_missing_subtitle),
-                modifier = Modifier.padding(innerPadding)
-            )
+            if (state.routes == RoutesState.Loading) {
+                ScreenLoading(modifier = Modifier.padding(innerPadding))
+            } else {
+                ScreenMessage(
+                    title = stringResource(R.string.route_missing_title),
+                    subtitle = stringResource(R.string.route_missing_subtitle),
+                    modifier = Modifier.padding(innerPadding)
+                )
+            }
             return@Scaffold
         }
 
@@ -195,19 +203,21 @@ private fun TodayChips(
         return
     }
 
-    val next = departures.firstOrNull { !it.hasLeft }
-    if (next == null) {
+    // Найближчий шукаємо за позицією, а не порівнянням самих рейсів: два маршрути з однаковим часом
+    // відправлення — це два однакові значення, і підсвітився б перший з них, хоч він уже й поїхав.
+    val nextIndex = departures.indexOfFirst { !it.hasLeft }
+    if (nextIndex < 0) {
         SectionMessage(stringResource(R.string.direction_no_more_today))
     }
 
     ChipGrid {
-        departures.forEach { departure ->
+        departures.forEachIndexed { index, departure ->
             TimeChip(
                 time = departure.time,
-                style = when {
-                    departure == next -> TimeChipStyle.NEXT
-                    departure.hasLeft -> TimeChipStyle.PAST
-                    else -> TimeChipStyle.UPCOMING
+                state = when {
+                    index == nextIndex -> TripState.NEXT
+                    departure.hasLeft -> TripState.PAST
+                    else -> TripState.UPCOMING
                 },
                 secondsUntil = departure.secondsUntil
             )
@@ -228,7 +238,7 @@ private fun DayChips(
 
     ChipGrid {
         times.forEach { time ->
-            TimeChip(time = time, style = TimeChipStyle.UPCOMING)
+            TimeChip(time = time, state = TripState.UPCOMING)
         }
     }
 }

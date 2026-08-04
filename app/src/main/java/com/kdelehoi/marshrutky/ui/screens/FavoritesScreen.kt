@@ -37,6 +37,7 @@ import com.kdelehoi.marshrutky.ui.components.rememberReorderState
 import com.kdelehoi.marshrutky.ui.components.reorderable
 import com.kdelehoi.marshrutky.ui.components.countdownText
 import com.kdelehoi.marshrutky.ui.components.formatted
+import com.kdelehoi.marshrutky.viewmodel.RoutesState
 import com.kdelehoi.marshrutky.viewmodel.ScheduleUiState
 import java.time.LocalDateTime
 
@@ -53,69 +54,98 @@ fun FavoritesScreen(
     onReorder: (List<String>) -> Unit
 ) {
     SearchableScaffold { query ->
-        val favorites = state.favoriteRoutes
-        // Порядок правимо локально, поки картку тягнуть, і зберігаємо вже після відпускання —
-        // інакше кожен обмін місцями їздив би в сховище й вертався звідти з затримкою.
-        val ordered = remember { mutableStateListOf<Route>() }
-        LaunchedEffect(favorites) {
-            if (ordered != favorites) {
-                ordered.clear()
-                ordered.addAll(favorites)
-            }
+        // Порада «познач зіркою на вкладці Маршрути» безглузда, поки тих маршрутів ще немає, тож
+        // порожнє обране й порожній застосунок — це різні повідомлення.
+        when (val routes = state.routes) {
+            RoutesState.Loading -> ScreenLoading()
+
+            RoutesState.Empty -> ScreenMessage(
+                title = stringResource(R.string.routes_empty_title),
+                subtitle = stringResource(R.string.routes_empty_subtitle)
+            )
+
+            is RoutesState.Ready -> FavoritesList(
+                favorites = remember(routes, state.favoriteRouteIds) {
+                    routes.inOrder(state.favoriteRouteIds)
+                },
+                query = query,
+                now = now,
+                onOpenRoute = { routeId -> exitSearchAnd { onOpenRoute(routeId) } },
+                onReorder = onReorder
+            )
         }
+    }
+}
 
-        val visible = ordered.filter { it.matches(query) }
-        // Під час пошуку видно не весь список, тож індекси перетягування не збігалися б із
-        // реальним порядком. Міняти місцями дозволяємо тільки на повному списку.
-        val canReorder = query.isBlank()
+@Composable
+private fun FavoritesList(
+    favorites: List<Route>,
+    query: String,
+    now: LocalDateTime,
+    onOpenRoute: (String) -> Unit,
+    onReorder: (List<String>) -> Unit
+) {
+    // Порядок правимо локально, поки картку тягнуть, і зберігаємо вже після відпускання — інакше
+    // кожен обмін місцями їздив би в сховище й вертався звідти з затримкою.
+    val ordered = remember { mutableStateListOf<Route>() }
+    LaunchedEffect(favorites) {
+        if (ordered != favorites) {
+            ordered.clear()
+            ordered.addAll(favorites)
+        }
+    }
 
-        val listState = rememberLazyListState()
-        val reorder = rememberReorderState(
-            listState = listState,
-            onMove = { from, to -> ordered.add(to, ordered.removeAt(from)) },
-            onSettled = { onReorder(ordered.map { it.id }) }
+    // Фільтруємо щоразу, без remember: ключем тут може бути лише сам список, а він той самий об'єкт
+    // від початку й до кінця, тож запам'ятоване значення вже нікуди не поділося б — на екрані
+    // застигла б порожня стрічка, якою вона була до першого наповнення. Обраних десятки, не тисячі.
+    val visible = ordered.filter { it.matches(query) }
+    // Під час пошуку видно не весь список, тож індекси перетягування не збігалися б із реальним
+    // порядком. Міняти місцями дозволяємо тільки на повному списку.
+    val canReorder = query.isBlank()
+
+    val listState = rememberLazyListState()
+    val reorder = rememberReorderState(
+        listState = listState,
+        onMove = { from, to -> ordered.add(to, ordered.removeAt(from)) },
+        onSettled = { onReorder(ordered.map { it.id }) }
+    )
+
+    when {
+        favorites.isEmpty() -> ScreenMessage(
+            title = stringResource(R.string.favorites_empty_title),
+            subtitle = stringResource(R.string.favorites_empty_subtitle)
         )
 
-        when {
-            // Порада «познач зіркою на вкладці Маршрути» безглузда, поки тих маршрутів ще немає.
-            state.isLoading -> ScreenLoading()
+        visible.isEmpty() -> ScreenMessage(
+            title = stringResource(R.string.nothing_found_title),
+            subtitle = stringResource(R.string.nothing_found_subtitle)
+        )
 
-            favorites.isEmpty() -> ScreenMessage(
-                title = stringResource(R.string.favorites_empty_title),
-                subtitle = stringResource(R.string.favorites_empty_subtitle)
-            )
-
-            visible.isEmpty() -> ScreenMessage(
-                title = stringResource(R.string.nothing_found_title),
-                subtitle = stringResource(R.string.nothing_found_subtitle)
-            )
-
-            else -> LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                itemsIndexed(visible, key = { _, route -> route.id }) { index, route ->
-                    FavoriteRouteCard(
-                        route = route,
-                        now = now,
-                        onClick = { exitSearchAnd { onOpenRoute(route.id) } },
-                        modifier = reorder
-                            .itemModifier(index, animate = Modifier.animateItem())
-                            .then(
-                                if (canReorder) {
-                                    Modifier.reorderable(
-                                        state = reorder,
-                                        key = route.id,
-                                        indexOf = { id -> ordered.indexOfFirst { it.id == id } }
-                                    )
-                                } else {
-                                    Modifier
-                                }
-                            )
-                    )
-                }
+        else -> LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            itemsIndexed(visible, key = { _, route -> route.id }) { index, route ->
+                FavoriteRouteCard(
+                    route = route,
+                    now = now,
+                    onClick = { onOpenRoute(route.id) },
+                    modifier = reorder
+                        .itemModifier(index, animate = Modifier.animateItem())
+                        .then(
+                            if (canReorder) {
+                                Modifier.reorderable(
+                                    state = reorder,
+                                    key = route.id,
+                                    indexOf = { id -> ordered.indexOfFirst { it.id == id } }
+                                )
+                            } else {
+                                Modifier
+                            }
+                        )
+                )
             }
         }
     }

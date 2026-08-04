@@ -6,11 +6,10 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,23 +20,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -45,29 +38,27 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.kdelehoi.marshrutky.R
 import com.kdelehoi.marshrutky.domain.DepartureCalculator
+import com.kdelehoi.marshrutky.domain.model.Route
 import com.kdelehoi.marshrutky.domain.model.StopDeparture
+import com.kdelehoi.marshrutky.ui.components.DepartureRow
 import com.kdelehoi.marshrutky.ui.components.DropdownField
-import com.kdelehoi.marshrutky.ui.components.ROUTE_BADGE_SIZE_SMALL
-import com.kdelehoi.marshrutky.ui.components.RouteNumberBadge
 import com.kdelehoi.marshrutky.ui.components.ScreenLoading
 import com.kdelehoi.marshrutky.ui.components.ScreenMessage
 import com.kdelehoi.marshrutky.ui.components.TabScreenInsets
-import com.kdelehoi.marshrutky.ui.components.agoText
-import com.kdelehoi.marshrutky.ui.components.countdownText
-import com.kdelehoi.marshrutky.ui.components.formatted
+import com.kdelehoi.marshrutky.ui.components.TripState
+import com.kdelehoi.marshrutky.ui.components.fillerPx
+import com.kdelehoi.marshrutky.ui.components.measuredRowPx
+import com.kdelehoi.marshrutky.ui.components.rememberAnchoredListState
 import com.kdelehoi.marshrutky.ui.components.rememberPullResistance
+import com.kdelehoi.marshrutky.viewmodel.RoutesState
 import com.kdelehoi.marshrutky.viewmodel.ScheduleUiState
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
@@ -86,62 +77,84 @@ fun NearestScreen(
 ) {
     Scaffold(contentWindowInsets = TabScreenInsets) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding)) {
-            // Розбір розкладу не залежить від поточного моменту, тож тримаємо його в remember:
-            // тік годинника й гортання вкладок мають коштувати лише перерахунку відліку.
-            val stopNames = remember(state.routes) { DepartureCalculator.stopNames(state.routes) }
-            // Зупинка могла зникнути з розкладів між запусками, тоді вибір скидається.
-            val selected = state.selectedStop?.takeIf { it in stopNames }
+            when (val routes = state.routes) {
+                RoutesState.Loading -> ScreenLoading()
 
-            if (state.isLoading) {
-                ScreenLoading()
-                return@Column
-            }
-
-            if (stopNames.isEmpty()) {
-                ScreenMessage(
+                RoutesState.Empty -> ScreenMessage(
                     title = stringResource(R.string.routes_empty_title),
                     subtitle = stringResource(R.string.routes_empty_subtitle)
                 )
-                return@Column
-            }
 
-            DropdownField(
-                label = stringResource(R.string.nearest_stop_label),
-                selected = selected,
-                options = stopNames,
-                optionLabel = { it },
-                onSelect = onSelectStop,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
-            )
-
-            if (selected == null) {
-                ScreenMessage(
-                    title = stringResource(R.string.nearest_no_stop_title),
-                    subtitle = stringResource(R.string.nearest_no_stop_subtitle)
+                is RoutesState.Ready -> StopDepartures(
+                    routes = routes.routes,
+                    selectedStop = state.selectedStop,
+                    now = now,
+                    onSelectStop = onSelectStop,
+                    onOpenRoute = onOpenRoute
                 )
-                return@Column
             }
-
-            val today = DepartureCalculator.dayTypeOf(now.toLocalDate())
-            val routeTimes = remember(state.routes, selected, today) {
-                DepartureCalculator.routeTimesFrom(state.routes, selected, today)
-            }
-
-            if (routeTimes.isEmpty()) {
-                ScreenMessage(
-                    title = stringResource(R.string.nearest_none_title),
-                    subtitle = stringResource(R.string.nearest_none_subtitle)
-                )
-                return@Column
-            }
-
-            DepartureList(
-                departures = DepartureCalculator.departuresOf(routeTimes, now),
-                stop = selected,
-                onOpenRoute = onOpenRoute
-            )
         }
     }
+}
+
+/** Вибір зупинки й день від неї. Зупинок може не бути взагалі — тоді нема з чого й вибирати. */
+@Composable
+private fun ColumnScope.StopDepartures(
+    routes: List<Route>,
+    selectedStop: String?,
+    now: LocalDateTime,
+    onSelectStop: (String) -> Unit,
+    onOpenRoute: (String) -> Unit
+) {
+    // Розбір розкладу не залежить від поточного моменту, тож тримаємо його в remember: тік
+    // годинника й гортання вкладок мають коштувати лише перерахунку відліку.
+    val stopNames = remember(routes) { DepartureCalculator.stopNames(routes) }
+    // Зупинка могла зникнути з розкладів між запусками, тоді вибір скидається.
+    val selected = selectedStop?.takeIf { it in stopNames }
+
+    if (stopNames.isEmpty()) {
+        ScreenMessage(
+            title = stringResource(R.string.routes_empty_title),
+            subtitle = stringResource(R.string.routes_empty_subtitle)
+        )
+        return
+    }
+
+    DropdownField(
+        label = stringResource(R.string.nearest_stop_label),
+        selected = selected,
+        options = stopNames,
+        optionLabel = { it },
+        onSelect = onSelectStop,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+    )
+
+    if (selected == null) {
+        ScreenMessage(
+            title = stringResource(R.string.nearest_no_stop_title),
+            subtitle = stringResource(R.string.nearest_no_stop_subtitle)
+        )
+        return
+    }
+
+    val today = DepartureCalculator.dayTypeOf(now.toLocalDate())
+    val routeTimes = remember(routes, selected, today) {
+        DepartureCalculator.routeTimesFrom(routes, selected, today)
+    }
+
+    if (routeTimes.isEmpty()) {
+        ScreenMessage(
+            title = stringResource(R.string.nearest_none_title),
+            subtitle = stringResource(R.string.nearest_none_subtitle)
+        )
+        return
+    }
+
+    DepartureDayList(
+        departures = DepartureCalculator.departuresOf(routeTimes, now),
+        stop = selected,
+        onOpenRoute = onOpenRoute
+    )
 }
 
 /**
@@ -150,7 +163,7 @@ fun NearestScreen(
  * лежать вище найближчого рейсу, і список одразу відкривається на ньому.
  */
 @Composable
-private fun DepartureList(
+private fun DepartureDayList(
     departures: List<StopDeparture>,
     stop: String,
     onOpenRoute: (String) -> Unit
@@ -158,51 +171,40 @@ private fun DepartureList(
     val past = departures.takeWhile { it.departure.hasLeft }
     val upcoming = departures.drop(past.size)
 
-    // Позицію рахуємо один раз на зупинку, і навмисне звичайним remember, а не через збережений
-    // стан: вкладку пейджер викидає, тож повернення до неї починається з найближчого рейсу, а не з
-    // того місця, де людина колись копалася в ранкових. Протягом дня стрічку теж нікуди не веземо —
-    // якщо о 15:15 маршрутка поїде, поки її роздивляються, список не має вискочити з-під пальця.
-    val listState = remember(stop) { LazyListState(firstVisibleItemIndex = past.size) }
+    // Дім стрічки — роздільник перед найближчим рейсом, а коли попереду вже нічого, то картка про
+    // це. Зі зміною зупинки стрічка починається з дому заново.
+    val anchored = rememberAnchoredListState(resetKey = stop, home = past.size)
+    val listState = anchored.listState
     val scope = rememberCoroutineScope()
 
     val haptics = LocalHapticFeedback.current
     // Стрічка стала на найближчий рейс — подія одна, хоч жестом, хоч кнопкою, тож і відгук один.
     val detent = { haptics.performHapticFeedback(HapticFeedbackType.LongPress) }
     val resistance = rememberPullResistance(
-        listState = listState,
+        anchored = anchored,
         threshold = PULL_THRESHOLD,
         maxStretch = PULL_MAX,
-        // Межа рухається протягом дня, тож питаємо її щоразу, а не запам'ятовуємо при створенні.
-        boundary = { past.size },
         onDetent = detent
     )
 
     val density = LocalDensity.current
     val spacingPx = with(density) { ROW_SPACING.roundToPx() }
-    val slopPx = with(density) { PAST_SLOP.roundToPx() }
-    val rowPx by remember { derivedStateOf { listState.measuredRow() } }
-
-    // Кнопка повернення потрібна, лише поки найближчий рейс справді пішов з екрана. Кілька точок
-    // залишку — це ще не минуле, інакше кнопка блимає під час витягування гумки.
-    val isInPast by remember(past.size, slopPx) {
-        derivedStateOf { listState.pastDepth(past.size) > slopPx }
-    }
+    val rowPx by remember { derivedStateOf { listState.measuredRowPx(ROW_TYPE) } }
+    // Кнопка повернення потрібна, лише поки найближчий рейс справді пішов з екрана.
+    val isInPast by remember(anchored) { derivedStateOf { !anchored.isAtHome } }
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize().then(resistance.modifier)) {
         // Висоту екрана беремо звідси, а не з розкладки списку. Інакше перша розкладка ще не знає про
         // порожнє місце під днем, устигає впертися в кінець стрічки — і найближчий рейс лишається не
         // на своєму місці, бо сам список назад не поїде.
-        // Смужку «Раніше сьогодні» в рахунок навмисне не беремо: вона нижча за рейс, тож її висота і
-        // є наш запас. Помилятися тут можна лише в бік зайвого місця — його ніхто не побачить, поки не
-        // доскролить день до кінця, а от нестача навіть на десяток точок одразу виштовхує поїханий
-        // рейс на екран.
         val filler = when {
             past.isEmpty() -> 0
-            else -> {
-                val row = if (rowPx > 0) rowPx else with(density) { ROW_ESTIMATE.roundToPx() }
-                val viewport = with(density) { maxHeight.roundToPx() }
-                (viewport - upcoming.size * (row + spacingPx)).coerceAtLeast(0)
-            }
+            else -> fillerPx(
+                viewportPx = with(density) { maxHeight.roundToPx() },
+                rowPx = if (rowPx > 0) rowPx else with(density) { ROW_ESTIMATE.roundToPx() },
+                spacingPx = spacingPx,
+                rowsBelowHome = upcoming.size
+            )
         }
 
         LazyColumn(
@@ -211,10 +213,10 @@ private fun DepartureList(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(ROW_SPACING)
         ) {
-            items(past, key = { it.key }) { item ->
+            items(past, key = { it.key }, contentType = { ROW_TYPE }) { item ->
                 DepartureRow(
                     item = item,
-                    style = DepartureRowStyle.PAST,
+                    state = TripState.PAST,
                     onClick = { onOpenRoute(item.route.id) },
                     modifier = Modifier.animateItem()
                 )
@@ -225,16 +227,20 @@ private fun DepartureList(
             if (past.isNotEmpty() && upcoming.isNotEmpty()) {
                 item(key = EARLIER_KEY) {
                     EarlierHeader(
-                        onClick = { scope.launch { listState.scrollUpOneScreen() } },
+                        onClick = { scope.launch { anchored.scrollUpOneScreen() } },
                         modifier = Modifier.animateItem()
                     )
                 }
             }
 
-            itemsIndexed(upcoming, key = { _, item -> item.key }) { index, item ->
+            itemsIndexed(
+                items = upcoming,
+                key = { _, item -> item.key },
+                contentType = { _, _ -> ROW_TYPE }
+            ) { index, item ->
                 DepartureRow(
                     item = item,
-                    style = if (index == 0) DepartureRowStyle.NEXT else DepartureRowStyle.UPCOMING,
+                    state = if (index == 0) TripState.NEXT else TripState.UPCOMING,
                     onClick = { onOpenRoute(item.route.id) },
                     // Коли маршрутка від'їжджає, вона переїжджає за роздільник — анімація робить
                     // цей обмін плавним замість ривка.
@@ -270,7 +276,7 @@ private fun DepartureList(
                 // Клац на приході, а не на натисканні: відгук означає «стрічка стала», як і в жесті.
                 onClick = {
                     scope.launch {
-                        listState.jumpToItem(past.size)
+                        anchored.goHome()
                         detent()
                     }
                 },
@@ -313,178 +319,20 @@ private fun EarlierHeader(onClick: () -> Unit, modifier: Modifier = Modifier) {
     }
 }
 
-private enum class DepartureRowStyle {
-    /** Найближчий рейс. */
-    NEXT,
-
-    /** Рейс попереду. */
-    UPCOMING,
-
-    /** Маршрутка вже поїхала. */
-    PAST
-}
-
-@Composable
-private fun DepartureRow(
-    item: StopDeparture,
-    style: DepartureRowStyle,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val containerColor = when (style) {
-        DepartureRowStyle.NEXT -> MaterialTheme.colorScheme.surfaceContainerHighest
-        DepartureRowStyle.UPCOMING -> MaterialTheme.colorScheme.surfaceContainerHigh
-        DepartureRowStyle.PAST -> MaterialTheme.colorScheme.surfaceContainerLow
-    }
-    // Ті самі значення, що в чипів розкладу маршруту: минуле скрізь у застосунку гасне однаково.
-    val contentColor = if (style == DepartureRowStyle.PAST) {
-        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = PAST_ALPHA)
-    } else {
-        contentColorFor(containerColor)
-    }
-
-    Card(
-        onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.extraLarge,
-        colors = CardDefaults.cardColors(
-            containerColor = containerColor,
-            contentColor = contentColor
-        )
-    ) {
-        Row(
-            modifier = Modifier.padding(start = 12.dp, end = 16.dp, top = 10.dp, bottom = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            // Маршрути без номера місце під значок усе одно займають, інакше кінцеві в сусідніх
-            // рядках роз'їхалися б по різних вертикалях.
-            val badgeModifier = if (style == DepartureRowStyle.PAST) {
-                // Значок кольорів картки не успадковує, тож гасимо його окремо.
-                Modifier.alpha(PAST_ALPHA)
-            } else {
-                Modifier
-            }
-            if (item.route.number != null) {
-                RouteNumberBadge(
-                    number = item.route.number,
-                    modifier = badgeModifier,
-                    size = ROUTE_BADGE_SIZE_SMALL,
-                    style = MaterialTheme.typography.labelMedium
-                )
-            } else {
-                Spacer(modifier = Modifier.size(ROUTE_BADGE_SIZE_SMALL))
-            }
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = item.destination,
-                    style = MaterialTheme.typography.bodyLarge,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = if (style == DepartureRowStyle.PAST) {
-                        agoText(item.departure.secondsUntil)
-                    } else {
-                        countdownText(item.departure.secondsUntil)
-                    },
-                    style = MaterialTheme.typography.labelMedium,
-                    color = when (style) {
-                        DepartureRowStyle.NEXT -> MaterialTheme.colorScheme.primary
-                        DepartureRowStyle.UPCOMING -> MaterialTheme.colorScheme.onSurfaceVariant
-                        // Успадковує пригашений колір картки.
-                        DepartureRowStyle.PAST -> Color.Unspecified
-                    }
-                )
-            }
-
-            // Час — головне в рядку, тож він найбільший. У найближчого рейсу він ще й залитий:
-            // разом із фоном картки це позначка «оце наступний». Ширина стала в обох станах, щоб
-            // права кромка часу лишалася рівною.
-            Box(
-                modifier = Modifier.size(width = TIME_WIDTH, height = TIME_HEIGHT),
-                contentAlignment = Alignment.Center
-            ) {
-                if (style == DepartureRowStyle.NEXT) {
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            TimeText(item.departure.time.formatted())
-                        }
-                    }
-                } else {
-                    TimeText(item.departure.time.formatted())
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun TimeText(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleLarge,
-        fontWeight = FontWeight.Bold
-    )
-}
-
-/**
- * Тап по «Раніше сьогодні» показує рейси, що були перед цим, а не початок дня: питання майже
- * завжди «а що поїхало щойно». Трохи екрана лишаємо на місці, щоб не втратити орієнтир.
- */
-private suspend fun LazyListState.scrollUpOneScreen() {
-    animateScrollBy(-layoutInfo.viewportSize.height * SCREEN_STEP)
-}
-
-/**
- * Повернення до найближчого рейсу. Анімувати сотню карток немає сенсу — це змазана стрічка, тож
- * здалеку стрибаємо миттєво і анімуємо лише останні кілька, як і при зміні вкладок.
- */
-private suspend fun LazyListState.jumpToItem(index: Int) {
-    if (index - firstVisibleItemIndex > NEAR_ITEMS) {
-        scrollToItem(index - NEAR_ITEMS)
-    }
-    animateScrollToItem(index)
-}
-
-/** Виміряна висота рядка; нуль — розкладки ще не було. Усі рядки однакові, тож досить будь-якого. */
-private fun LazyListState.measuredRow(): Int =
-    layoutInfo.visibleItemsInfo
-        .filterNot { it.key == FILLER_KEY }
-        .maxOfOrNull { it.size }
-        ?: 0
-
-/** Наскільки стрічка заїхала в минуле; нуль — найближчий рейс стоїть першим рядком. */
-private fun LazyListState.pastDepth(boundary: Int): Int {
-    val info = layoutInfo
-    val item = info.visibleItemsInfo.firstOrNull { it.index == boundary } ?: return Int.MAX_VALUE
-    return (item.offset - info.viewportStartOffset).coerceAtLeast(0)
-}
-
 private const val EARLIER_KEY = "earlier-today"
 private const val FILLER_KEY = "filler"
 private const val NO_MORE_KEY = "no-more-today"
-private const val PAST_ALPHA = 0.5f
-private const val SCREEN_STEP = 0.85f
-private const val NEAR_ITEMS = 3
+
+/** За цим типом знаходимо рядок рейсу серед видимих елементів, щоб виміряти його висоту. */
+private const val ROW_TYPE = "departure-row"
+
 private val ROW_SPACING = 8.dp
 
 /** Поки рядок не виміряно, порожнє місце під днем рахуємо з оцінки — рядки в стрічці однакові. */
 private val ROW_ESTIMATE = 68.dp
-
-/** Ближче за це до межі — це ще найближчий рейс на своєму місці, а не заїзд у минуле. */
-private val PAST_SLOP = 32.dp
 
 /** Скільки треба витягнути пальцем, щоб список лишився в минулому, а не відскочив назад. */
 private val PULL_THRESHOLD = 112.dp
 
 /** Далі гумка не тягнеться: третина картки, хоч веди палець через увесь екран. */
 private val PULL_MAX = 64.dp
-private val TIME_WIDTH = 80.dp
-private val TIME_HEIGHT = 44.dp
