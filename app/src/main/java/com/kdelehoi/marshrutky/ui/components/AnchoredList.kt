@@ -29,6 +29,18 @@ sealed interface HomePosition {
     data object BelowScreen : HomePosition
 }
 
+/**
+ * Чи лежить дім вище екрана. Питання не риторичне: стрічку можна залишити в обидва боки — вгору в
+ * минуле й уперед по дню, — і дорога додому щоразу веде в інший бік.
+ */
+internal val HomePosition.isAbove: Boolean
+    get() = when (this) {
+        HomePosition.AboveScreen -> true
+        HomePosition.BelowScreen -> false
+        // Дім ще видно, але його верх уже за краєм екрана — отже, ми його проїхали.
+        is HomePosition.Visible -> gap < 0
+    }
+
 /** Те, що гумці треба знати про стрічку: де дім і як стрічку посунути. */
 internal interface AnchoredScroll {
 
@@ -83,6 +95,10 @@ class AnchoredListState internal constructor(
     /** Дім стоїть першим рядком. Кілька точок залишку — це ще дім, а не заїзд у минуле. */
     val isAtHome: Boolean
         get() = (homePosition as? HomePosition.Visible)?.gap?.let { it <= homeSlopPx } ?: false
+
+    /** В який бік поїде стрічка, якщо попросити її додому. */
+    val isHomeAbove: Boolean
+        get() = homePosition.isAbove
 
     override fun nudge(delta: Float) {
         listState.dispatchRawDelta(delta)

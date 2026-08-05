@@ -32,10 +32,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -190,8 +193,14 @@ private fun DepartureDayList(
     val density = LocalDensity.current
     val spacingPx = with(density) { ROW_SPACING.roundToPx() }
     val rowPx by remember { derivedStateOf { listState.measuredRowPx(ROW_TYPE) } }
-    // Кнопка повернення потрібна, лише поки найближчий рейс справді пішов з екрана.
-    val isInPast by remember(anchored) { derivedStateOf { !anchored.isAtHome } }
+    // Кнопка повернення потрібна, лише поки найближчий рейс справді пішов з екрана — байдуже, в який
+    // бік: гортати можна і вгору в минуле, і вперед по дню.
+    val awayFromHome by remember(anchored) { derivedStateOf { !anchored.isAtHome } }
+    val homeAbove by remember(anchored) { derivedStateOf { anchored.isHomeAbove } }
+    // Стрілка тримає той напрямок, з яким кнопка з'явилася: на самому приході додому «вище» стало б
+    // «нижче», і стрілка перекидалася б просто під час зникнення.
+    var arrowUp by remember(anchored) { mutableStateOf(false) }
+    LaunchedEffect(awayFromHome, homeAbove) { if (awayFromHome) arrowUp = homeAbove }
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize().then(resistance.modifier)) {
         // Висоту екрана беремо звідси, а не з розкладки списку. Інакше перша розкладка ще не знає про
@@ -210,7 +219,9 @@ private fun DepartureDayList(
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
+            // Знизу лишаємо місце під плаваючою кнопкою: інакше вона сідає просто на картку й
+            // затирає кінцеву зупинку останнього рейсу, який видно.
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = JUMP_BUTTON_SPACE),
             verticalArrangement = Arrangement.spacedBy(ROW_SPACING)
         ) {
             items(past, key = { it.key }, contentType = { ROW_TYPE }) { item ->
@@ -265,12 +276,12 @@ private fun DepartureDayList(
         }
 
         AnimatedVisibility(
-            visible = isInPast,
+            visible = awayFromHome,
             enter = fadeIn() + slideInVertically { it },
             exit = fadeOut() + slideOutVertically { it },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 16.dp)
+                .padding(bottom = JUMP_BUTTON_MARGIN)
         ) {
             FilledTonalButton(
                 // Клац на приході, а не на натисканні: відгук означає «стрічка стала», як і в жесті.
@@ -283,7 +294,7 @@ private fun DepartureDayList(
                 elevation = ButtonDefaults.filledTonalButtonElevation(defaultElevation = 3.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.KeyboardArrowDown,
+                    imageVector = if (arrowUp) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                     contentDescription = null,
                     modifier = Modifier.size(20.dp)
                 )
@@ -327,6 +338,12 @@ private const val NO_MORE_KEY = "no-more-today"
 private const val ROW_TYPE = "departure-row"
 
 private val ROW_SPACING = 8.dp
+
+/** Відступ кнопки повернення від нижнього краю. */
+private val JUMP_BUTTON_MARGIN = 16.dp
+
+/** Стільки стрічка тримає порожнім знизу: сама кнопка, її відступ і просвіт над карткою. */
+private val JUMP_BUTTON_SPACE = 40.dp + JUMP_BUTTON_MARGIN + 16.dp
 
 /** Поки рядок не виміряно, порожнє місце під днем рахуємо з оцінки — рядки в стрічці однакові. */
 private val ROW_ESTIMATE = 68.dp

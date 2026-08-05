@@ -1,6 +1,7 @@
 package com.kdelehoi.marshrutky.ui.components
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -48,5 +49,35 @@ class AnchoredListTest {
         // його повним рядком означало б занизити порожнє місце рівно на різницю, і день не доїхав би
         // до краю саме на ту смужку, яку видно на екрані.
         assertEquals(viewport - 2 * (row + spacing), filler)
+    }
+}
+
+/**
+ * Кнопка повернення обіцяє стрілкою напрямок, і збрехати нею гірше, ніж не показати нічого: саме це
+ * й сталося, коли напрямок вважали завжди однаковим — «ми ж у минулому».
+ */
+class HomeDirectionTest {
+
+    @Test
+    fun `home out of sight upwards means the way home leads up`() {
+        // Так виглядає гортання вперед по дню: найближчий рейс лишився вище екрана.
+        assertTrue(HomePosition.AboveScreen.isAbove)
+    }
+
+    @Test
+    fun `home out of sight downwards means the way home leads down`() {
+        // А так — заїзд у минуле: найближчий рейс лишився нижче.
+        assertFalse(HomePosition.BelowScreen.isAbove)
+    }
+
+    @Test
+    fun `home caught by its top edge counts as already passed`() {
+        assertTrue(HomePosition.Visible(gap = -1f).isAbove)
+    }
+
+    @Test
+    fun `home below the top edge is still ahead`() {
+        assertFalse(HomePosition.Visible(gap = 0f).isAbove)
+        assertFalse(HomePosition.Visible(gap = 300f).isAbove)
     }
 }
